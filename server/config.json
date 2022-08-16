@@ -1,0 +1,44 @@
+{
+    "ss": "servisofts.inventario",
+    "socket_client": {
+        "servicio": {
+            "puerto": 10001,
+            "ip": "servicio.ss.lo",
+            "cert": {
+                "OU": "servicio",
+                "pem": "servicio.pem"
+            }
+        },
+        "reconectTime": 5000
+    },
+    "files": {
+        "url": "/u01/servisoftsFiles/inventario/"
+    },
+    "data_base": {
+        "puerto": 5432,
+        "pass": "postgres",
+        "ip": "192.168.5.39",
+        "bd_name": "servisofts.inventario",
+        "user": "postgres"
+    },
+    "nombre": "inventario",
+    "ssl": {
+        "pass_jks": "Servisofts123.",
+        "cert": {
+            "ST": "Av Banzer",
+            "C": "BO",
+            "E": "servisofts.srl@gmail.com",
+            "OU": "inventario",
+            "CN": "inventario.servisofts.com",
+            "L": "Santa Cruz",
+            "O": "SERVISOFTS S.R.L."
+        },
+        "nombre_jks": "servisofts"
+    },
+    "mail_server": {
+        "host": "smtp.gmail.com",
+        "port": 465,
+        "email": "servisofts.srl@gmail.com",
+        "password": "servisofts123."
+    }
+}
