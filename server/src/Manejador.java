@@ -14,8 +14,29 @@ public class Manejador {
             return;
         }
         switch (obj.getString("component")) {
-            case test.COMPONENT:
-                test.onMessage(obj, session);
+            case Almacen.COMPONENT:
+                Almacen.onMessage(obj, session);
+                break;
+            case Marca.COMPONENT:
+                Marca.onMessage(obj, session);
+                break;
+            case Modelo.COMPONENT:
+                Modelo.onMessage(obj, session);
+                break;
+            case Producto.COMPONENT:
+                Producto.onMessage(obj, session);
+                break;
+            case UnidadMedida.COMPONENT:
+                UnidadMedida.onMessage(obj, session);
+                break;
+            case InventarioDato.COMPONENT:
+                InventarioDato.onMessage(obj, session);
+                break;
+            case ModeloInventarioDato.COMPONENT:
+                ModeloInventarioDato.onMessage(obj, session);
+                break;
+            case ProductoModeloInventarioDato.COMPONENT:
+                ProductoModeloInventarioDato.onMessage(obj, session);
                 break;
         }
     }
