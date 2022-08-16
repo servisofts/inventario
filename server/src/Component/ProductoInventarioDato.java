@@ -6,8 +6,8 @@ import Servisofts.SPGConect;
 import Servisofts.SUtil;
 import Server.SSSAbstract.SSSessionAbstract;
 
-public class ProductoModeloInventarioDato {
-    public static final String COMPONENT = "producto_modelo_inventario_dato";
+public class ProductoInventarioDato {
+    public static final String COMPONENT = "producto_inventario_dato";
 
     public static void onMessage(JSONObject obj, SSSessionAbstract session) {
         switch (obj.getString("type")) {
