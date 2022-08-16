@@ -6,8 +6,8 @@ import Servisofts.SPGConect;
 import Servisofts.SUtil;
 import Server.SSSAbstract.SSSessionAbstract;
 
-public class test {
-    public static final String COMPONENT = "test";
+public class ModeloInventarioDato {
+    public static final String COMPONENT = "modelo_inventario_dato";
 
     public static void onMessage(JSONObject obj, SSSessionAbstract session) {
         switch (obj.getString("type")) {
@@ -29,6 +29,13 @@ public class test {
     public static void getAll(JSONObject obj, SSSessionAbstract session) {
         try {
             String consulta = "select get_all('" + COMPONENT + "') as json";
+            if(obj.has("key_modelo")){
+                consulta = "select get_all('" + COMPONENT + "', 'key_modelo', '"+obj.getString("key_modelo")+"') as json";
+            }
+            if(obj.has("key_invetario_dato")){
+                consulta = "select get_all('" + COMPONENT + "', 'key_invetario_dato', '"+obj.getString("key_invetario_dato")+"') as json";
+            }
+            
             JSONObject data = SPGConect.ejecutarConsultaObject(consulta);
             obj.put("data", data);
             obj.put("estado", "exito");
