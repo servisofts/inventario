@@ -60,6 +60,21 @@ public class Producto {
             data.put("fecha_on", SUtil.now());
             data.put("key_usuario", obj.getString("key_usuario"));
             SPGConect.insertArray(COMPONENT, new JSONArray().put(data));
+
+            if(obj.has("key_almacen")){
+                JSONObject almacen_producto = new JSONObject();
+                almacen_producto.put("key", SUtil.uuid());
+                almacen_producto.put("estado", 1);
+                almacen_producto.put("fecha_on", SUtil.now());
+                almacen_producto.put("key_usuario", obj.getString("key_usuario"));
+                almacen_producto.put("key_almacen", obj.getString("key_almacen"));
+                almacen_producto.put("key_producto", data.getString("key"));
+                almacen_producto.put("Descripcion", "Almacenamiento directo por medio de compras");
+                almacen_producto.put("fecha_movimiento", SUtil.now());
+                almacen_producto.put("tipo_movimiento", "ingreso");
+                SPGConect.insertArray("almacen_producto", new JSONArray().put(almacen_producto));
+            }
+
             obj.put("data", data);
             obj.put("estado", "exito");
         } catch (Exception e) {
