@@ -41,8 +41,8 @@ public class Manejador {
             case TipoProducto.COMPONENT:
                 TipoProducto.onMessage(obj, session);
                 break;
-            case AlmacenProducto.COMPONENT:
-                AlmacenProducto.onMessage(obj, session);
+            case ProductoHistorico.COMPONENT:
+                ProductoHistorico.onMessage(obj, session);
                 break;
         }
     }

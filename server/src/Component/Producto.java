@@ -52,6 +52,16 @@ public class Producto {
         }
     }
 
+    public static JSONObject getByKey(String key) {
+        try {
+            String consulta = "select get_by_key('" + COMPONENT + "', '" + key + "') as json";
+            return SPGConect.ejecutarConsultaObject(consulta);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public static void registro(JSONObject obj, SSSessionAbstract session) {
         try {
             JSONObject data = obj.getJSONObject("data");
@@ -59,21 +69,9 @@ public class Producto {
             data.put("estado", 1);
             data.put("fecha_on", SUtil.now());
             data.put("key_usuario", obj.getString("key_usuario"));
-            SPGConect.insertArray(COMPONENT, new JSONArray().put(data));
+            data.put("key_almacen", obj.getString("key_almacen"));
 
-            if(obj.has("key_almacen")){
-                JSONObject almacen_producto = new JSONObject();
-                almacen_producto.put("key", SUtil.uuid());
-                almacen_producto.put("estado", 1);
-                almacen_producto.put("fecha_on", SUtil.now());
-                almacen_producto.put("key_usuario", obj.getString("key_usuario"));
-                almacen_producto.put("key_almacen", obj.getString("key_almacen"));
-                almacen_producto.put("key_producto", data.getString("key"));
-                almacen_producto.put("Descripcion", "Almacenamiento directo por medio de compras");
-                almacen_producto.put("fecha_movimiento", SUtil.now());
-                almacen_producto.put("tipo_movimiento", "ingreso");
-                SPGConect.insertArray("almacen_producto", new JSONArray().put(almacen_producto));
-            }
+            SPGConect.insertArray(COMPONENT, new JSONArray().put(data));
 
             obj.put("data", data);
             obj.put("estado", "exito");
@@ -86,8 +84,20 @@ public class Producto {
 
     public static void editar(JSONObject obj, SSSessionAbstract session) {
         try {
+
             JSONObject data = obj.getJSONObject("data");
+
+            JSONObject producto_historico = Producto.getByKey(data.getString("key"));
+            producto_historico.put("key", SUtil.uuid());
+            producto_historico.put("key_usuario", obj.getString("key_usuario"));
+            producto_historico.put("key_producto", data.getString("key"));
+            SPGConect.insertArray("producto_historico", new JSONArray().put(producto_historico));
+            
+            data.put("fecha_on", SUtil.now());
             SPGConect.editObject(COMPONENT, data);
+
+
+
             obj.put("data", data);
             obj.put("estado", "exito");
         } catch (Exception e) {

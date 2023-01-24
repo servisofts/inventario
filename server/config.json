@@ -3,7 +3,7 @@
     "socket_client": {
         "servicio": {
             "puerto": 10001,
-            "ip": "192.168.6.1",
+            "ip": "192.168.5.1",
             "cert": {
                 "OU": "servicio",
                 "pem": "servicio.pem"
