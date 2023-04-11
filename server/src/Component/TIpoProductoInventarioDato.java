@@ -58,6 +58,15 @@ public class TIpoProductoInventarioDato {
             e.printStackTrace();
         }
     }
+    public static JSONObject getByKeyTipoProducto(String key_tipo_producto) {
+        try {
+            String consulta = "select get_all('" + COMPONENT + "','key_tipo_producto', '" + key_tipo_producto + "') as json";
+            return SPGConect.ejecutarConsultaObject(consulta);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 
     public static void registro(JSONObject obj, SSSessionAbstract session) {
         try {

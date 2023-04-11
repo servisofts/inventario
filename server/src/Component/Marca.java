@@ -52,6 +52,16 @@ public class Marca {
         }
     }
 
+    public static JSONObject getByDescripcion(String descripcion) {
+        try {
+            String consulta = "select get_by_key('" + COMPONENT + "', 'descripcion', '" + descripcion + "') as json";
+            return SPGConect.ejecutarConsultaObject(consulta);
+        } catch (Exception e) {
+            return null;
+
+        }
+    }
+
     public static void registro(JSONObject obj, SSSessionAbstract session) {
         try {
             JSONObject data = obj.getJSONObject("data");

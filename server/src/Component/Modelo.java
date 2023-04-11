@@ -39,6 +39,16 @@ public class Modelo {
         }
     }
 
+    public static JSONObject getByDescripcion(String descripcion) {
+        try {
+            String consulta = "select get_by_key('" + COMPONENT + "', 'descripcion', '" + descripcion + "') as json";
+            return SPGConect.ejecutarConsultaObject(consulta);
+        } catch (Exception e) {
+            return null;
+
+        }
+    }   
+
     public static void getByKey(JSONObject obj, SSSessionAbstract session) {
         try {
             String consulta = "select get_by_key('" + COMPONENT + "', '" + obj.getString("key") + "') as json";
@@ -51,6 +61,16 @@ public class Modelo {
             e.printStackTrace();
         }
     }
+    public static JSONObject getByKey(String key) {
+        try {
+            String consulta = "select get_by_key('" + COMPONENT + "', '" + key + "') as json";
+            return SPGConect.ejecutarConsultaObject(consulta);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
 
     public static void registro(JSONObject obj, SSSessionAbstract session) {
         try {

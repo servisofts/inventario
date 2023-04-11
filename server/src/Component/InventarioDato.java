@@ -38,6 +38,15 @@ public class InventarioDato {
             e.printStackTrace();
         }
     }
+    public static JSONObject getAll(String key_modelo) {
+        try {
+            String consulta = "select get_inventario_dato('" + key_modelo + "') as json";
+            return SPGConect.ejecutarConsultaObject(consulta);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 
     public static void getByKey(JSONObject obj, SSSessionAbstract session) {
         try {

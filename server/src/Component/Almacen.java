@@ -71,7 +71,7 @@ public class Almacen {
 
     public static void editar(JSONObject obj, SSSessionAbstract session) {
         try {
-            JSONObject data = obj.getJSONObject("data");
+            JSONObject data = obj.getJSONObject("data");    
             SPGConect.editObject(COMPONENT, data);
             obj.put("data", data);
             obj.put("estado", "exito");
