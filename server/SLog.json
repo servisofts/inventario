@@ -2,7 +2,7 @@
   "Servicios": {
     "compra_venta": {
       "host": "192.168.5.41:10041",
-      "status": "desconectado"
+      "status": "exito"
     }
   },
   "PostgreSQL": {
@@ -10,5 +10,5 @@
     "status": "exito"
   },
   "- SLog": "RealTime Log from server Servisofts",
-  "- Fecha": "2023-04-04T20:20:01.000917"
+  "- Fecha": "2023-04-20T21:39:34.000403"
 }

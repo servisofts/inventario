@@ -205,7 +205,9 @@ public class Producto {
                     productoInventarioDato.put("key", SUtil.uuid());
                     productoInventarioDato.put("key_usuario", obj.getString("key_usuario"));
                     productoInventarioDato.put("estado", 1);
-                    productoInventarioDato.put("descripcion", data.getJSONObject(i).getString(inventrarioDato.getString("descripcion")));
+                    if( data.getJSONObject(i).has(inventrarioDato.getString("descripcion"))){
+                        productoInventarioDato.put("descripcion", data.getJSONObject(i).getString(inventrarioDato.getString("descripcion")));
+                    }
                     productoInventarioDato.put("observacion", "");
                     productoInventarioDato.put("fecha_on", SUtil.now());
                     productoInventarioDato.put("key_producto", data.getJSONObject(i).getString("key"));
