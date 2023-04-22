@@ -1,7 +1,7 @@
 {
   "Servicios": {
     "compra_venta": {
-      "host": "192.168.5.41:10041",
+      "host": "192.168.2.1:10041",
       "status": "exito"
     }
   },
@@ -10,5 +10,5 @@
     "status": "exito"
   },
   "- SLog": "RealTime Log from server Servisofts",
-  "- Fecha": "2023-04-20T21:39:34.000403"
+  "- Fecha": "2023-04-22T00:19:59.000773"
 }

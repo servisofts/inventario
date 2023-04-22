@@ -130,7 +130,18 @@ public class Producto {
             }
             */
 
-            obj.put("data", true);
+
+            JSONObject send = new JSONObject();
+            send.put("component", "compra_venta_detalle_producto");
+            send.put("type", "getCuotas");
+            send.put("key_producto", _productoDato.getJSONObject(JSONObject.getNames(_productoDato)[0]).getString("key_producto"));
+            send =SocketCliente.sendSinc("compra_venta", send);
+            if(send.has("error")){
+                obj.put("estado", "error");
+                obj.put("error", send.getString("error"));
+                return;
+            } 
+            obj.put("data", send.getJSONObject("data"));
             obj.put("estado", "exito");
             
         } catch (Exception e) {
