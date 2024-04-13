@@ -36,6 +36,9 @@ public class Producto {
     public static void getAll(JSONObject obj, SSSessionAbstract session) {
         try {
             String consulta = "select get_all('" + COMPONENT + "') as json";
+            if(obj.has("key_empresa")){
+                consulta = "select get_productos('" + obj.get("key_empresa") + "') as json";
+            }
             JSONObject data = SPGConect.ejecutarConsultaObject(consulta);
             obj.put("data", data);
             obj.put("estado", "exito");
@@ -201,6 +204,7 @@ public class Producto {
             String key_compra_venta_detalle=data.getJSONObject(0).getString("key_compra_venta_detalle");
 
             JSONObject inventrarios_dato = InventarioDato.getAll(key_modelo);
+            
             JSONObject inventrarioDato, productoInventarioDato;
             JSONArray productoInventarioDatoArr = new JSONArray();
             JSONArray keys_prod_inv_dato = new JSONArray();
@@ -210,22 +214,26 @@ public class Producto {
                 data.getJSONObject(i).put("estado", 1);
                 data.getJSONObject(i).put("fecha_on", SUtil.now());
                 data.getJSONObject(i).put("key_usuario", obj.getString("key_usuario"));
-                for (int j = 0; j < JSONObject.getNames(inventrarios_dato).length; j++) {
-                    inventrarioDato = inventrarios_dato.getJSONObject(JSONObject.getNames(inventrarios_dato)[j]);
-                    productoInventarioDato = new JSONObject();
-                    productoInventarioDato.put("key", SUtil.uuid());
-                    productoInventarioDato.put("key_usuario", obj.getString("key_usuario"));
-                    productoInventarioDato.put("estado", 1);
-                    if( data.getJSONObject(i).has(inventrarioDato.getString("descripcion"))){
-                        productoInventarioDato.put("descripcion", data.getJSONObject(i).getString(inventrarioDato.getString("descripcion")));
-                    }
-                    productoInventarioDato.put("observacion", "");
-                    productoInventarioDato.put("fecha_on", SUtil.now());
-                    productoInventarioDato.put("key_producto", data.getJSONObject(i).getString("key"));
-                    productoInventarioDato.put("key_inventario_dato", inventrarioDato.getString("key"));
 
-                    productoInventarioDatoArr.put(productoInventarioDato);
+                if(JSONObject.getNames(inventrarios_dato)!=null){
+                    for (int j = 0; j < JSONObject.getNames(inventrarios_dato).length; j++) {
+                        inventrarioDato = inventrarios_dato.getJSONObject(JSONObject.getNames(inventrarios_dato)[j]);
+                        productoInventarioDato = new JSONObject();
+                        productoInventarioDato.put("key", SUtil.uuid());
+                        productoInventarioDato.put("key_usuario", obj.getString("key_usuario"));
+                        productoInventarioDato.put("estado", 1);
+                        if( data.getJSONObject(i).has(inventrarioDato.getString("descripcion"))){
+                            productoInventarioDato.put("descripcion", data.getJSONObject(i).getString(inventrarioDato.getString("descripcion")));
+                        }
+                        productoInventarioDato.put("observacion", "");
+                        productoInventarioDato.put("fecha_on", SUtil.now());
+                        productoInventarioDato.put("key_producto", data.getJSONObject(i).getString("key"));
+                        productoInventarioDato.put("key_inventario_dato", inventrarioDato.getString("key"));
+    
+                        productoInventarioDatoArr.put(productoInventarioDato);
+                    }
                 }
+                
             }
 
             SPGConect.Transacction();

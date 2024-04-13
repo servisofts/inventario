@@ -29,6 +29,9 @@ public class InventarioDato {
     public static void getAll(JSONObject obj, SSSessionAbstract session) {
         try {
             String consulta = "select get_all('" + COMPONENT + "', 'key_servicio', '"+obj.getJSONObject("servicio").getString("key")+"') as json";
+            if(obj.has("key_empresa")){
+                consulta = "select get_all('" + COMPONENT + "', 'key_empresa', '" + obj.get("key_empresa") + "') as json";
+            }
             JSONObject data = SPGConect.ejecutarConsultaObject(consulta);
             obj.put("data", data);
             obj.put("estado", "exito");
