@@ -1,8 +1,14 @@
 package Component;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import Servisofts.SConfig;
 import Servisofts.SPGConect;
+import Servisofts.SPGConectInstance;
 import Servisofts.SUtil;
 import SocketCliente.SocketCliente;
 import Server.SSSAbstract.SSSessionAbstract;
@@ -72,16 +78,112 @@ public class ProductoEntrega {
     public static void registro(JSONObject obj, SSSessionAbstract session) {
         try {
             JSONObject data = obj.getJSONObject("data");
-            data.put("key", SUtil.uuid());
-            data.put("estado", 1);
-            data.put("fecha_on", SUtil.now());
-            data.put("key_usuario", obj.getString("key_usuario"));
 
-            SPGConect.insertArray(COMPONENT, new JSONArray().put(data));
+            SPGConectInstance conectInstance =  new SPGConectInstance(SConfig.getJSON("data_base"));
+            conectInstance.Transacction();
+            try {
 
-            obj.put("data", data);
-            obj.put("estado", "exito");
-            obj.put("sendAll", true);
+                JSONObject producto = Producto.getByKey(obj.getJSONObject("data").getString("key_producto"));
+                if(producto == null){
+                    obj.put("estado", "error");
+                    obj.put("error", "No existe key_producto");
+                    return;
+                }
+
+                // Inserto el Producto Entrega
+                
+                data.put("key", SUtil.uuid());
+                data.put("estado", 1);
+                data.put("fecha_on", SUtil.now());
+                data.put("key_usuario", obj.getString("key_usuario"));
+
+                conectInstance.insertArray(COMPONENT, new JSONArray().put(data));
+
+                // Actualizar Producto Padre
+                BigDecimal cantidadProducto;
+                try {
+                    cantidadProducto =  new BigDecimal(producto.get("cantidad") + "");
+                } catch (Exception e) {
+                    cantidadProducto = BigDecimal.ZERO;
+                }
+                BigDecimal precioCompraProducto;
+                try {
+                    precioCompraProducto =  new BigDecimal(producto.get("precio_compra") + "");
+                } catch (Exception e) {
+                    precioCompraProducto = BigDecimal.ZERO;
+                }
+                
+                BigDecimal cantidadProductoEntrega;
+                try {
+                    cantidadProductoEntrega =  new BigDecimal(obj.getJSONObject("data").get("cantidad") + "");
+                } catch (Exception e) {
+                    cantidadProductoEntrega = BigDecimal.ZERO;
+                }
+                
+                BigDecimal precioUnitarioCompraProductoEntrega;
+                try {
+                    precioUnitarioCompraProductoEntrega =  new BigDecimal(obj.getJSONObject("data").get("precio_unitario_compra") + "");
+                } catch (Exception e) {
+                    precioUnitarioCompraProductoEntrega = BigDecimal.ZERO;
+                }
+
+                cantidadProducto = cantidadProducto.subtract(cantidadProductoEntrega, MathContext.DECIMAL128);
+                precioCompraProducto = precioCompraProducto.subtract(precioUnitarioCompraProductoEntrega.multiply(cantidadProductoEntrega), MathContext.DECIMAL128);
+                producto.put("cantidad", cantidadProducto.toString());
+                producto.put("precio_compra", precioCompraProducto.toString());
+                producto.put("fecha_on", SUtil.now());
+                conectInstance.editObject("producto", producto);
+
+
+           
+                JSONObject peticion = new JSONObject();
+                peticion.put("component", "compra_venta_detalle_producto");
+                peticion.put("type", "entregar");
+                peticion.put("key_compra_venta_detalle_producto", obj.getJSONObject("data").get("key_compra_venta_detalle_producto"));
+                JSONObject respuesta = SocketCliente.sendSinc("compra_venta", peticion, 1000 * 60);
+                if(!respuesta.getString("estado").equals("exito")) {
+                    conectInstance.rollback();
+
+                    try {
+                        conectInstance.getConexion().close();    
+                    } catch (Exception e1) {
+                        
+                    }
+                    obj.put("estado", "error");
+                    obj.put("error", respuesta.getString("error"));
+                    return;
+                }
+
+
+                conectInstance.commit();
+
+                try {
+                    conectInstance.getConexion().close();    
+                } catch (Exception e1) {
+                    
+                }
+
+                obj.put("data", data);
+                obj.put("estado", "exito");
+                obj.put("sendAll", true);
+
+
+             } catch (Exception e) {
+                conectInstance.rollback();
+
+                try {
+                    conectInstance.getConexion().close();    
+                } catch (Exception e1) {
+                    
+                }
+                
+                // todo cerrar
+                obj.put("estado", "error");
+                obj.put("error", e.getMessage());
+                e.printStackTrace();
+                return;
+            }
+            
         } catch (Exception e) {
             obj.put("estado", "error");
             obj.put("error", e.getMessage());

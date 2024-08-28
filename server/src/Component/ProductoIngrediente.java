@@ -1,7 +1,11 @@
 package Component;
 
+import java.math.BigDecimal;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import Contabilidad.Contabilidad;
 import Servisofts.SPGConect;
 import Servisofts.SUtil;
 import SocketCliente.SocketCliente;
@@ -27,6 +31,9 @@ public class ProductoIngrediente {
             case "editar":
                 editar(obj, session);
                 break;
+            case "generar_asiento":
+                generar_asiento(obj, session);
+                break;
         }
     }
 
@@ -35,6 +42,9 @@ public class ProductoIngrediente {
             String consulta = "select get_all('" + COMPONENT + "') as json";
             if(obj.has("key_empresa")){
                 consulta = "select get_productos('" + obj.get("key_empresa") + "') as json";
+            }
+            if(obj.has("key_producto")){
+                consulta = "select get_producto_ingredientes('"+obj.getString("key_producto")+"') as json";
             }
             JSONObject data = SPGConect.ejecutarConsultaObject(consulta);
             obj.put("data", data);
@@ -59,9 +69,9 @@ public class ProductoIngrediente {
         }
     }
 
-    public static JSONObject getByKey(String key_modelo, String key_producto) {
+    public static JSONObject getByKey(String key) {
         try {
-            String consulta = "select get_by_key('" + COMPONENT + "', 'key_modelo','"+key_modelo+"','key_producto','" + key_producto + "') as json";
+            String consulta = "select get_by_key('" + COMPONENT + "', '" + key + "') as json";
             return SPGConect.ejecutarConsultaObject(consulta);
         } catch (Exception e) {
             e.printStackTrace();
@@ -88,30 +98,41 @@ public class ProductoIngrediente {
                 return;
             }
 
-            JSONObject productoIngrediente = ProductoIngrediente.getByKey(obj.getJSONObject("data").getString("key_modelo"), obj.getJSONObject("data").getString("key_producto"));
+            // Creacion del Producto Hijo
+            JSONObject dataProductoIngrediente = new JSONObject();
+            dataProductoIngrediente.put("key", SUtil.uuid());
+            dataProductoIngrediente.put("estado", 1);
+            dataProductoIngrediente.put("fecha_on", SUtil.now());
+            dataProductoIngrediente.put("key_usuario", obj.getString("key_usuario"));
+            dataProductoIngrediente.put("key_almacen", producto.getString("key_almacen"));
+            dataProductoIngrediente.put("key_modelo", obj.getJSONObject("data").getString("key_modelo"));
+            dataProductoIngrediente.put("cantidad", obj.getJSONObject("data").get("cantidad"));
+            dataProductoIngrediente.put("precio_compra", obj.getJSONObject("data").get("precio_compra"));
+            dataProductoIngrediente.put("descripcion", modelo.getString("descripcion"));
+            dataProductoIngrediente.put("observacion", modelo.getString("observacion"));
 
-            if(productoIngrediente == null || productoIngrediente.isEmpty()){
-                obj.put("estado", "exito");
-                
+            SPGConect.insertObject("producto", dataProductoIngrediente);
+            // ---- 
+            
+            JSONObject data = obj.getJSONObject("data");
+            data.put("key", SUtil.uuid());
+            data.put("estado", 1);
+            data.put("fecha_on", SUtil.now());
+            data.put("tipo", "salida");
+            data.put("key_usuario", obj.getString("key_usuario"));
+            data.put("key_producto_ingrediente", dataProductoIngrediente.getString("key"));
+            SPGConect.insertObject(COMPONENT, data);    
 
-                JSONObject data = obj.getJSONObject("data");
-                data.put("key", SUtil.uuid());
-                data.put("estado", 1);
-                data.put("fecha_on", SUtil.now());
-                data.put("key_usuario", obj.getString("key_usuario"));
-                SPGConect.insertObject(COMPONENT, data);    
-                obj.put("data", data);
-                return;
-            }
-
-            productoIngrediente.put("cantidad", obj.getJSONObject("data").get("cantidad"));
-            SPGConect.editObject(COMPONENT, productoIngrediente);
-
-            //SPGConect.insertArray(COMPONENT, new JSONArray().put(productoIngrediente));
-
-            obj.put("data", productoIngrediente);
+            BigDecimal precioCompraProducto = new BigDecimal(producto.get("precio_compra") + "");
+            BigDecimal precioCompraProductoIngrediente = new BigDecimal(dataProductoIngrediente.get("precio_compra") + "");
+            precioCompraProducto = precioCompraProducto.subtract(precioCompraProductoIngrediente);
+            producto.put("precio_compra", precioCompraProducto.toString());
+            SPGConect.editObject("producto", producto);
+            
+            obj.put("data", data);
             obj.put("estado", "exito");
             obj.put("sendAll", true);
+
         } catch (Exception e) {
             obj.put("estado", "error");
             obj.put("error", e.getMessage());
@@ -205,9 +226,22 @@ public class ProductoIngrediente {
             data.put("fecha_on", SUtil.now());
             SPGConect.editObject(COMPONENT, data);
 
-
-
             obj.put("data", data);
+            obj.put("estado", "exito");
+            obj.put("sendAll", true);
+        } catch (Exception e) {
+            obj.put("estado", "error");
+            obj.put("error", e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+
+    public static void generar_asiento(JSONObject obj, SSSessionAbstract session) {
+        try {
+            Contabilidad.traspasoProducto(obj);
+
+            // obj.put("data", data);
             obj.put("estado", "exito");
             obj.put("sendAll", true);
         } catch (Exception e) {

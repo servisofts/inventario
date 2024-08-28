@@ -1,14 +1,12 @@
 {
   "Servicios": {
-    "compra_venta": {
-      "host": "192.168.2.1:10041",
-      "status": "exito"
-    }
+    "compra_venta": true,
+    "contabilidad": true
   },
   "PostgreSQL": {
     "host": "jdbc:postgresql://192.168.5.39:5432/servisofts.inventario",
     "status": "exito"
   },
   "- SLog": "RealTime Log from server Servisofts",
-  "- Fecha": "2024-04-12T23:12:20.000424"
+  "- Fecha": "2024-08-08T01:34:03.000672"
 }

@@ -50,6 +50,21 @@ public class Manejador {
             case ProductoIngrediente.COMPONENT:
                 ProductoIngrediente.onMessage(obj, session);
                 break;
-        }
+            case ProductoUtilizado.COMPONENT:
+                ProductoUtilizado.onMessage(obj, session);
+                break;
+            case ModeloIngrediente.COMPONENT:
+                ModeloIngrediente.onMessage(obj, session);
+                break;
+            case CategoriaProducto.COMPONENT:
+                CategoriaProducto.onMessage(obj, session);
+                break;
+            case SubProducto.COMPONENT:
+                SubProducto.onMessage(obj, session);
+                break;
+            case SubProductoDetalle.COMPONENT:
+                SubProductoDetalle.onMessage(obj, session);
+                break;
+            }
     }
 }
