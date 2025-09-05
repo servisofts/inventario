@@ -3,6 +3,7 @@ package Component;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import Models.TipoMovimientoCardex;
 import Servisofts.SConfig;
 import Servisofts.SPGConect;
 import Servisofts.SPGConectInstance;
@@ -40,7 +41,6 @@ public class Producto {
             case "editar":
                 editar(obj, session);
                 break;
-
             case "verificar":
                 verificar(obj, session);
                 break;
@@ -51,13 +51,17 @@ public class Producto {
                 elavorar(obj, session);
                 break;
             case "guardar":
-            guardar(obj, session);
+                guardar(obj, session);
                 break;
             case "getProductosVenta":
                 getProductosVenta(obj, session);
                 break;
+            case "getAllByKeys":
+                getAllByKeys(obj, session);
+                break;
         }
     }
+
     public static void getProductosDetalle(JSONObject obj, SSSessionAbstract session) {
         try {
             String consulta = "";
@@ -84,8 +88,9 @@ public class Producto {
             } else {
                 SPGConect.editObject(COMPONENT, data);
             }
-            //historial.guardarHistorial(data.getString("key"), COMPONENT, obj.getString("key_usuario"));
-            if(data.has("sub_productos") && !data.isNull("sub_productos")) {
+            // historial.guardarHistorial(data.getString("key"), COMPONENT,
+            // obj.getString("key_usuario"));
+            if (data.has("sub_productos") && !data.isNull("sub_productos")) {
                 JSONArray sub_productos;
                 try {
                     sub_productos = data.getJSONArray("sub_productos");
@@ -93,7 +98,7 @@ public class Producto {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                
+
             }
             obj.put("data", data);
             obj.put("estado", "exito");
@@ -115,11 +120,12 @@ public class Producto {
             e.printStackTrace();
         }
     }
-    
+
     public static void getCategoriasProductosDetallePartner(JSONObject obj, SSSessionAbstract session) {
         try {
-            String consulta = "select get_categorias_productos_detalle_partner('" + obj.getString("key_empresa") + "') as json";
-            
+            String consulta = "select get_categorias_productos_detalle_partner('" + obj.getString("key_empresa")
+                    + "') as json";
+
             JSONArray data = SPGConect.ejecutarConsultaArray(consulta);
             obj.put("data", data);
             obj.put("estado", "exito");
@@ -129,10 +135,11 @@ public class Producto {
             e.printStackTrace();
         }
     }
+
     public static void getCategoriasProductosDetalle(JSONObject obj, SSSessionAbstract session) {
         try {
             String consulta = "select get_categorias_productos_detalle('" + obj.getString("key_empresa") + "') as json";
-            
+
             JSONArray data = SPGConect.ejecutarConsultaArray(consulta);
             obj.put("data", data);
             obj.put("estado", "exito");
@@ -146,11 +153,40 @@ public class Producto {
     public static void getAll(JSONObject obj, SSSessionAbstract session) {
         try {
             String consulta = "select get_all('" + COMPONENT + "') as json";
-            if(obj.has("key_empresa")){
+            if (obj.has("key_empresa")) {
                 consulta = "select get_productos('" + obj.get("key_empresa") + "') as json";
             }
             JSONObject data = SPGConect.ejecutarConsultaObject(consulta);
             obj.put("data", data);
+            obj.put("estado", "exito");
+        } catch (Exception e) {
+            obj.put("estado", "error");
+            obj.put("error", e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public static void getAllByKeys(JSONObject obj, SSSessionAbstract session) {
+        try {
+            JSONArray data = obj.getJSONArray("data");
+            String consulta = "WITH json_data AS (\n" + //
+                    "  SELECT jsonb_array_elements('" + data.toString() + "'::jsonb) AS data\n" +
+                    ")\n" +
+                    "SELECT array_to_json(array_agg(sq.*)) as json \n" +
+                    "FROM (\n" +
+                    "SELECT p.*, \n" +
+                    "COALESCE(P.nombre,'') || ' ' || COALESCE(P.observacion,'') || ' ' || COALESCE(P.descripcion,'') AS NOMBRE_PRODUCTO,\n"
+                    +
+                    "       (data->>'cantidad')::int AS cantidad_solicitada, \n" +
+                    "       (data->>'precio')::numeric AS precio_solicitado,\n" +
+                    "       (data->>'cantidad')::int * (data->>'precio')::numeric AS precio_total_solicitado\n" +
+                    "FROM json_data,\n" +
+                    "     LATERAL jsonb_to_record(data) AS r(key text, cantidad int, precio numeric)\n" +
+                    "JOIN producto p ON p.key = r.key\n" +
+                    ") sq";
+
+            JSONArray productos = SPGConect.ejecutarConsultaArray(consulta);
+            obj.put("data", productos);
             obj.put("estado", "exito");
         } catch (Exception e) {
             obj.put("estado", "error");
@@ -164,7 +200,7 @@ public class Producto {
     }
 
     public static void buscarIngredientes(JSONObject obj, SSSessionAbstract session) {
-        
+
     }
 
     public static void verificar(JSONObject obj, SSSessionAbstract session) {
@@ -173,7 +209,7 @@ public class Producto {
             String marca = obj.getJSONObject("data").getString("marca");
 
             JSONObject _marca = Marca.getByDescripcion(marca);
-            if(_marca==null || _marca.isEmpty()){
+            if (_marca == null || _marca.isEmpty()) {
                 obj.put("estado", "error");
                 obj.put("error", "no_existe_marca");
                 return;
@@ -182,7 +218,7 @@ public class Producto {
             String modelo = obj.getJSONObject("data").getString("modelo");
 
             JSONObject _modelo = Modelo.getByDescripcion(modelo);
-            if(_modelo==null || _modelo.isEmpty()){
+            if (_modelo == null || _modelo.isEmpty()) {
                 obj.put("estado", "error");
                 obj.put("error", "no_existe_modelo");
                 return;
@@ -191,14 +227,13 @@ public class Producto {
             String chasis = obj.getJSONObject("data").getString("chasis");
 
             JSONObject _productoDatos = Producto.getProductoDato(chasis);
-            if(_productoDatos==null || _productoDatos.isEmpty()){
+            if (_productoDatos == null || _productoDatos.isEmpty()) {
                 obj.put("estado", "error");
                 obj.put("error", "no_existe_chasis");
                 return;
             }
-            
 
-            if(JSONObject.getNames(_productoDatos).length>1){
+            if (JSONObject.getNames(_productoDatos).length > 1) {
                 obj.put("estado", "error");
                 obj.put("error", "chasis_duplicado");
                 return;
@@ -206,65 +241,67 @@ public class Producto {
 
             JSONObject _productoDato = _productoDatos.getJSONObject(JSONObject.getNames(_productoDatos)[0]);
 
-            if(_productoDatos==null || _productoDatos.isEmpty()){
+            if (_productoDatos == null || _productoDatos.isEmpty()) {
                 obj.put("estado", "error");
                 obj.put("error", "no_existe_chasis");
                 return;
             }
-            
 
-            /*if(!_productoDato.getString("key_marca").equals(_marca.getString("key"))){
-                obj.put("estado", "error");
-                obj.put("error", "marca_producto_incorrecta");
-                return;
-            }*/
+            /*
+             * if(!_productoDato.getString("key_marca").equals(_marca.getString("key"))){
+             * obj.put("estado", "error");
+             * obj.put("error", "marca_producto_incorrecta");
+             * return;
+             * }
+             */
 
-            /* Si es posible aumentar luego que valide que este bien el modelo
-            if(!_productoDato.getString("key_modelo").equals(_modelo.getString("key"))){
-                obj.put("estado", "error");
-                obj.put("error", "modelo_producto_incorrecto");
-                return;
-            }*/
+            /*
+             * Si es posible aumentar luego que valide que este bien el modelo
+             * if(!_productoDato.getString("key_modelo").equals(_modelo.getString("key"))){
+             * obj.put("estado", "error");
+             * obj.put("error", "modelo_producto_incorrecto");
+             * return;
+             * }
+             */
 
             String motor = obj.getJSONObject("data").getString("motor");
 
             _productoDato = Producto.getProductoDato(motor);
-            if(_productoDato==null || _productoDato.isEmpty()){
+            if (_productoDato == null || _productoDato.isEmpty()) {
                 obj.put("estado", "error");
                 obj.put("error", "no_existe_motor");
                 return;
             }
 
-            if(JSONObject.getNames(_productoDato).length>1){
+            if (JSONObject.getNames(_productoDato).length > 1) {
                 obj.put("estado", "error");
                 obj.put("error", "motor_duplicado");
                 return;
             }
 
-
             /*
-            Lo mismo aca
-            if(!_productoDato.getString("key_modelo").equals(_modelo.getString("key"))){
-                obj.put("estado", "error");
-                obj.put("error", "modelo_producto_incorrecto");
-                return;
-            }
-            */
-
+             * Lo mismo aca
+             * if(!_productoDato.getString("key_modelo").equals(_modelo.getString("key"))){
+             * obj.put("estado", "error");
+             * obj.put("error", "modelo_producto_incorrecto");
+             * return;
+             * }
+             */
 
             JSONObject send = new JSONObject();
             send.put("component", "compra_venta_detalle_producto");
             send.put("type", "getCuotas");
-            send.put("key_producto", _productoDato.getJSONObject(JSONObject.getNames(_productoDato)[0]).getString("key_producto"));
-            send =SocketCliente.sendSinc("compra_venta", send);
-            if(send.has("error")){
+            send.put("key_producto",
+                    _productoDato.getJSONObject(JSONObject.getNames(_productoDato)[0]).getString("key_producto"));
+            send = SocketCliente.sendSinc("compra_venta", send);
+            if (send.has("error")) {
                 obj.put("estado", "error");
                 obj.put("error", send.getString("error"));
                 return;
-            } 
+            }
             obj.put("data", send.getJSONObject("data"));
             obj.put("estado", "exito");
-            
+
         } catch (Exception e) {
             obj.put("estado", "error");
             obj.put("error", e.getMessage());
@@ -302,62 +339,77 @@ public class Producto {
             conectInstance.Transacction();
 
             JSONObject producto = obj.getJSONObject("data");
-  
+
             producto.put("key", SUtil.uuid());
             producto.put("estado", 1);
             producto.put("fecha_on", SUtil.now());
             producto.put("key_usuario", obj.getString("key_usuario"));
-            producto.put("key_almacen", obj.getString("key_almacen"));
+            if (obj.has("key_almacen")) {
+                producto.put("key_almacen", obj.getString("key_almacen"));
+
+            }
 
             conectInstance.insertArray(COMPONENT, new JSONArray().put(producto));
 
-            if(obj.has("key_compra_venta_detalle") && !obj.isNull("key_compra_venta_detalle")) {
-                JSONObject dataPeticionCompraVenta =  new JSONObject();
-                dataPeticionCompraVenta.put("key_compra_venta_detalle", obj.get("key_compra_venta_detalle"));
-                dataPeticionCompraVenta.put("key_producto", producto.get("key"));
-                dataPeticionCompraVenta.put("cantidad", producto.get("cantidad"));
+            JSONObject cardex = InventarioCardex.CrearMovimiento(
+                    producto.getString("key"),
+                    TipoMovimientoCardex.ingreso_compra,
+                    producto.getDouble("cantidad"),
+                    producto.getString("key_almacen"),
+                    obj.getString("key_usuario"));
+            conectInstance.insertObject("inventario_cardex", cardex);
 
-                JSONObject peticionCompraVenta = new JSONObject();
-                peticionCompraVenta.put("component", "compra_venta_detalle_producto");
-                peticionCompraVenta.put("type", "registro");
-                peticionCompraVenta.put("data", dataPeticionCompraVenta);
-                peticionCompraVenta.put("key_usuario", obj.get("key_usuario"));
-                peticionCompraVenta.put("servicio", obj.get("servicio"));
-                if(obj.has("key_sucursal")){
-                    peticionCompraVenta.put("key_sucursal", obj.get("key_sucursal"));
-                }
-                JSONObject respuesta = SocketCliente.sendSinc("compra_venta", peticionCompraVenta, 1000 * 60);
-                if(!respuesta.getString("estado").equals("exito")) {
-                    throw new Exception("compra_venta\n" + respuesta.getString("error"));
-                }
-            }
+
+            // Si se desea registrar el producto en la compra venta, descomentar las siguientes
+            // Lo siguiente se esta descontinuando quisas no
+
+            // if (obj.has("key_compra_venta_detalle") && !obj.isNull("key_compra_venta_detalle")) {
+            //     JSONObject dataPeticionCompraVenta = new JSONObject();
+            //     dataPeticionCompraVenta.put("key_compra_venta_detalle", obj.get("key_compra_venta_detalle"));
+            //     dataPeticionCompraVenta.put("key_producto", producto.get("key"));
+            //     dataPeticionCompraVenta.put("cantidad", producto.get("cantidad"));
+
+            //     JSONObject peticionCompraVenta = new JSONObject();
+            //     peticionCompraVenta.put("component", "compra_venta_detalle_producto");
+            //     peticionCompraVenta.put("type", "registro");
+            //     peticionCompraVenta.put("data", dataPeticionCompraVenta);
+            //     peticionCompraVenta.put("key_usuario", obj.get("key_usuario"));
+            //     peticionCompraVenta.put("servicio", obj.get("servicio"));
+            //     if (obj.has("key_sucursal")) {
+            //         peticionCompraVenta.put("key_sucursal", obj.get("key_sucursal"));
+            //     }
+            //     JSONObject respuesta = SocketCliente.sendSinc("compra_venta", peticionCompraVenta, 1000 * 60);
+            //     if (!respuesta.getString("estado").equals("exito")) {
+            //         throw new Exception("compra_venta\n" + respuesta.getString("error"));
+            //     }
+            // }
 
             conectInstance.commit();
-
 
             obj.put("data", producto);
             obj.put("estado", "exito");
             obj.put("sendAll", true);
-            
+
         } catch (Exception e) {
             obj.put("estado", "error");
             obj.put("error", e.getMessage());
             e.printStackTrace();
             conectInstance.rollback();
         } finally {
-            if(conectInstance != null) {
+            if (conectInstance != null) {
                 conectInstance.close();
             }
         }
     }
+
     public static void registroExcel(JSONObject obj, SSSessionAbstract session) {
         try {
             JSONArray data = obj.getJSONArray("data");
-            String key_modelo=data.getJSONObject(0).getString("key_modelo");
-            String key_compra_venta_detalle=data.getJSONObject(0).getString("key_compra_venta_detalle");
+            String key_modelo = data.getJSONObject(0).getString("key_modelo");
+            String key_compra_venta_detalle = data.getJSONObject(0).getString("key_compra_venta_detalle");
 
             JSONObject inventrarios_dato = InventarioDato.getAll(key_modelo);
-            
+
             JSONObject inventrarioDato, productoInventarioDato;
             JSONArray productoInventarioDatoArr = new JSONArray();
             JSONArray keys_prod_inv_dato = new JSONArray();
@@ -368,37 +420,37 @@ public class Producto {
                 data.getJSONObject(i).put("fecha_on", SUtil.now());
                 data.getJSONObject(i).put("key_usuario", obj.getString("key_usuario"));
 
-                if(JSONObject.getNames(inventrarios_dato)!=null){
+                if (JSONObject.getNames(inventrarios_dato) != null) {
                     for (int j = 0; j < JSONObject.getNames(inventrarios_dato).length; j++) {
                         inventrarioDato = inventrarios_dato.getJSONObject(JSONObject.getNames(inventrarios_dato)[j]);
                         productoInventarioDato = new JSONObject();
                         productoInventarioDato.put("key", SUtil.uuid());
                         productoInventarioDato.put("key_usuario", obj.getString("key_usuario"));
                         productoInventarioDato.put("estado", 1);
-                        if( data.getJSONObject(i).has(inventrarioDato.getString("descripcion"))){
-                            productoInventarioDato.put("descripcion", data.getJSONObject(i).getString(inventrarioDato.getString("descripcion")));
+                        if (data.getJSONObject(i).has(inventrarioDato.getString("descripcion"))) {
+                            productoInventarioDato.put("descripcion",
+                                    data.getJSONObject(i).getString(inventrarioDato.getString("descripcion")));
                         }
                         productoInventarioDato.put("observacion", "");
                         productoInventarioDato.put("fecha_on", SUtil.now());
                         productoInventarioDato.put("key_producto", data.getJSONObject(i).getString("key"));
                         productoInventarioDato.put("key_inventario_dato", inventrarioDato.getString("key"));
-    
+
                         productoInventarioDatoArr.put(productoInventarioDato);
                     }
                 }
             }
 
-            
-
             SPGConect.Transacction();
             SPGConect.insertArray(COMPONENT, data);
             SPGConect.insertArray("producto_inventario_dato", productoInventarioDatoArr);
-            Boolean inserto = sendCompraVenta(key_compra_venta_detalle, keys_prod_inv_dato, obj.getString("key_usuario"));
-            if(inserto) SPGConect.commit();
-            else SPGConect.rollback();
+            Boolean inserto = sendCompraVenta(key_compra_venta_detalle, keys_prod_inv_dato,
+                    obj.getString("key_usuario"));
+            if (inserto)
+                SPGConect.commit();
+            else
+                SPGConect.rollback();
             SPGConect.Transacction_end();
-            
-            
 
             obj.put("data", data);
             obj.put("estado", "exito");
@@ -412,7 +464,8 @@ public class Producto {
         }
     }
 
-    public static boolean sendCompraVenta(String key_compra_venta_detalle, JSONArray keys_productos, String key_usuario) throws Exception{
+    public static boolean sendCompraVenta(String key_compra_venta_detalle, JSONArray keys_productos, String key_usuario)
+            throws Exception {
         JSONObject send = new JSONObject();
         send.put("component", "compra_venta_detalle_producto");
         send.put("type", "registroExcel");
@@ -421,10 +474,10 @@ public class Producto {
         send.put("keys", keys_productos);
         send.put("estado", "cargando");
         send = SocketCliente.sendSinc("compra_venta", send);
-        if(send.getString("estado").equals("exito")){
+        if (send.getString("estado").equals("exito")) {
             return true;
         }
-        
+
         return false;
 
     }
@@ -440,9 +493,8 @@ public class Producto {
                     data.remove("fecha_habilitacion_automatica");
                 }
             }
+
             SPGConect.editObject(COMPONENT, data);
-
-
 
             obj.put("data", data);
             obj.put("estado", "exito");

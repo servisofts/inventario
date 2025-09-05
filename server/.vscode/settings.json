@@ -1,0 +1,10 @@
+{
+    "java.project.sourcePaths": [
+        "src"
+    ],
+    "java.project.referencedLibraries": [
+        "c:\\Users\\servisofts\\Documents\\GitHub\\inventario\\server\\lib\\javax.mail-1.6.2.jar",
+        "c:\\Users\\servisofts\\Documents\\GitHub\\inventario\\server\\lib\\activation-1.1.1.jar",
+        "c:\\Users\\servisofts\\Documents\\GitHub\\inventario\\server\\lib\\servisofts-java-service.jar"
+    ]
+}

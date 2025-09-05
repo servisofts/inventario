@@ -28,7 +28,12 @@ public class Almacen {
 
     public static void getAll(JSONObject obj, SSSessionAbstract session) {
         try {
+
             String consulta = "select get_all('" + COMPONENT + "') as json";
+            if (obj.has("key_empresa")) {
+                consulta = "select get_all('" + COMPONENT + "','key_empresa','" + obj.getString("key_empresa")
+                        + "') as json";
+            }
             JSONObject data = SPGConect.ejecutarConsultaObject(consulta);
             obj.put("data", data);
             obj.put("estado", "exito");
@@ -71,7 +76,7 @@ public class Almacen {
 
     public static void editar(JSONObject obj, SSSessionAbstract session) {
         try {
-            JSONObject data = obj.getJSONObject("data");    
+            JSONObject data = obj.getJSONObject("data");
             SPGConect.editObject(COMPONENT, data);
             obj.put("data", data);
             obj.put("estado", "exito");

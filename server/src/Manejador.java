@@ -6,7 +6,8 @@ import Server.SSSAbstract.SSSessionAbstract;
 public class Manejador {
     public static void onMessage(JSONObject obj, SSSessionAbstract session) {
         if (session != null) {
-            SConsole.log(session.getIdSession(), "\t|\t", obj.getString("component"), obj.getString("type"));
+            SConsole.log(session.getIdSession(), "\t|\t", obj.getString("component"),
+                    obj.getString("type"));
         } else {
             SConsole.log("http-server", "-->", obj.getString("component"), obj.getString("type"));
         }
@@ -65,6 +66,19 @@ public class Manejador {
             case SubProductoDetalle.COMPONENT:
                 SubProductoDetalle.onMessage(obj, session);
                 break;
-            }
+
+            case ConteoManualInventario.COMPONENT:
+                ConteoManualInventario.onMessage(obj, session);
+                break;
+            case Proveedor.COMPONENT:
+                Proveedor.onMessage(obj, session);
+                break;
+            case ModeloProveedor.COMPONENT:
+                ModeloProveedor.onMessage(obj, session);
+                break;
+            case DB.COMPONENT:
+                DB.onMessage(obj, session);
+                break;
+        }
     }
 }
