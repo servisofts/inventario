@@ -1,7 +1,7 @@
 import Component.*;
 import Servisofts.SConsole;
 import org.json.JSONObject;
-import Server.SSSAbstract.SSSessionAbstract;
+import Servisofts.Server.SSSAbstract.SSSessionAbstract;
 
 public class Manejador {
     public static void onMessage(JSONObject obj, SSSessionAbstract session) {

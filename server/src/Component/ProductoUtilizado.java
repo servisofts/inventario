@@ -2,10 +2,13 @@ package Component;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import Servisofts.SConfig;
 import Servisofts.SPGConect;
+import Servisofts.SPGConectInstance;
 import Servisofts.SUtil;
-import SocketCliente.SocketCliente;
-import Server.SSSAbstract.SSSessionAbstract;
+import Servisofts.SocketCliente.SocketCliente;
+import Servisofts.Server.SSSAbstract.SSSessionAbstract;
 
 public class ProductoUtilizado {
     public static final String COMPONENT = "producto_utilizado";
@@ -86,6 +89,7 @@ public class ProductoUtilizado {
         }
     }
     public static void registroExcel(JSONObject obj, SSSessionAbstract session) {
+         SPGConectInstance conectInstance = new SPGConectInstance(SConfig.getJSON("data_base"));
         try {
             JSONArray data = obj.getJSONArray("data");
             String key_modelo=data.getJSONObject(0).getString("key_modelo");
@@ -119,13 +123,13 @@ public class ProductoUtilizado {
                 }
             }
 
-            SPGConect.Transacction();
-            SPGConect.insertArray(COMPONENT, data);
-            SPGConect.insertArray("producto_inventario_dato", productoInventarioDatoArr);
+            conectInstance.Transacction();
+            conectInstance.insertArray(COMPONENT, data);
+            conectInstance.insertArray("producto_inventario_dato", productoInventarioDatoArr);
             Boolean inserto = sendCompraVenta(key_compra_venta_detalle, keys_prod_inv_dato, obj.getString("key_usuario"));
-            if(inserto) SPGConect.commit();
-            else SPGConect.rollback();
-            SPGConect.Transacction_end();
+            if(inserto) conectInstance.commit();
+            else conectInstance.rollback();
+            conectInstance.Transacction_end();
             
             
 
@@ -133,8 +137,8 @@ public class ProductoUtilizado {
             obj.put("estado", "exito");
             obj.put("sendAll", true);
         } catch (Exception e) {
-            SPGConect.rollback();
-            SPGConect.Transacction_end();
+            conectInstance.rollback();
+            conectInstance.Transacction_end();
             obj.put("estado", "error");
             obj.put("error", e.getMessage());
             e.printStackTrace();

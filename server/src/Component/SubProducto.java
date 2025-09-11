@@ -4,7 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import Servisofts.SPGConect;
 import Servisofts.SUtil;
-import Server.SSSAbstract.SSSessionAbstract;
+import Servisofts.Server.SSSAbstract.SSSessionAbstract;
 
 public class SubProducto {
     public static final String COMPONENT = "sub_producto";

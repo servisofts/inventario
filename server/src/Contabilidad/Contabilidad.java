@@ -11,7 +11,7 @@ import Component.ProductoIngrediente;
 import Component.TipoProducto;
 import Servisofts.SPGConect;
 import Servisofts.SUtil;
-import SocketCliente.SocketCliente;
+import Servisofts.SocketCliente.SocketCliente;
 
 public class Contabilidad {
     public static JSONObject getAjusteEmpresa(String key_empresa, String key_ajuste) {
