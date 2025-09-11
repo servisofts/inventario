@@ -14,7 +14,7 @@ import Servisofts.Contabilidad.AsientoContable;
 import Servisofts.Contabilidad.AsientoContableDetalle;
 import Servisofts.Contabilidad.AsientoContableTipo;
 import Util.ConectInstance;
-import Server.SSSAbstract.SSSessionAbstract;
+import Servisofts.Server.SSSAbstract.SSSessionAbstract;
 
 public class ConteoManualInventario {
     public static final String COMPONENT = "conteo_manual_inventario";

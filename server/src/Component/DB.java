@@ -8,9 +8,9 @@ import Servisofts.SConfig;
 import Servisofts.SPGConect;
 import Servisofts.SPGConectInstance;
 import Servisofts.SUtil;
-import SocketCliente.SocketCliente;
+import Servisofts.SocketCliente.SocketCliente;
 import Util.ConectInstance;
-import Server.SSSAbstract.SSSessionAbstract;
+import Servisofts.Server.SSSAbstract.SSSessionAbstract;
 
 public class DB {
     public static final String COMPONENT = "db";

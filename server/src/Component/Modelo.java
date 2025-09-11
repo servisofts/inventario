@@ -17,7 +17,7 @@ import Servisofts.Contabilidad.AsientoContableDetalle;
 import Servisofts.Contabilidad.Contabilidad;
 import Util.ConectInstance;
 import picocli.CommandLine.Model;
-import Server.SSSAbstract.SSSessionAbstract;
+import Servisofts.Server.SSSAbstract.SSSessionAbstract;
 
 public class Modelo {
     public static final String COMPONENT = "modelo";

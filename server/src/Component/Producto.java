@@ -8,9 +8,9 @@ import Servisofts.SConfig;
 import Servisofts.SPGConect;
 import Servisofts.SPGConectInstance;
 import Servisofts.SUtil;
-import SocketCliente.SocketCliente;
+import Servisofts.SocketCliente.SocketCliente;
 import Util.ConectInstance;
-import Server.SSSAbstract.SSSessionAbstract;
+import Servisofts.Server.SSSAbstract.SSSessionAbstract;
 
 public class Producto {
     public static final String COMPONENT = "producto";
@@ -403,6 +403,7 @@ public class Producto {
     }
 
     public static void registroExcel(JSONObject obj, SSSessionAbstract session) {
+         SPGConectInstance conectInstance = new SPGConectInstance(SConfig.getJSON("data_base"));
         try {
             JSONArray data = obj.getJSONArray("data");
             String key_modelo = data.getJSONObject(0).getString("key_modelo");
@@ -441,23 +442,23 @@ public class Producto {
                 }
             }
 
-            SPGConect.Transacction();
-            SPGConect.insertArray(COMPONENT, data);
-            SPGConect.insertArray("producto_inventario_dato", productoInventarioDatoArr);
+            conectInstance.Transacction();
+            conectInstance.insertArray(COMPONENT, data);
+            conectInstance.insertArray("producto_inventario_dato", productoInventarioDatoArr);
             Boolean inserto = sendCompraVenta(key_compra_venta_detalle, keys_prod_inv_dato,
                     obj.getString("key_usuario"));
             if (inserto)
-                SPGConect.commit();
+                conectInstance.commit();
             else
-                SPGConect.rollback();
-            SPGConect.Transacction_end();
+                conectInstance.rollback();
+            conectInstance.Transacction_end();
 
             obj.put("data", data);
             obj.put("estado", "exito");
             obj.put("sendAll", true);
         } catch (Exception e) {
-            SPGConect.rollback();
-            SPGConect.Transacction_end();
+            conectInstance.rollback();
+            conectInstance.Transacction_end();
             obj.put("estado", "error");
             obj.put("error", e.getMessage());
             e.printStackTrace();
