@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import Contabilidad.Contabilidad;
+import Contabilidad.ContaHook;
 import Servisofts.SConfig;
 import Servisofts.SPGConect;
 import Servisofts.SPGConectInstance;
@@ -246,7 +246,7 @@ public class ProductoIngrediente {
 
     public static void generar_asiento(JSONObject obj, SSSessionAbstract session) {
         try {
-            Contabilidad.traspasoProducto(obj);
+            ContaHook.traspasoProducto(obj);
 
             // obj.put("data", data);
             obj.put("estado", "exito");

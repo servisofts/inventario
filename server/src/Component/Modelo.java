@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import Contabilidad.ContaHook;
 import Models.TipoMovimientoCardex;
 import Servisofts.SConfig;
 import Servisofts.SPGConect;
@@ -503,12 +504,22 @@ public class Modelo {
             }
 
             String key_sucursal = compra.getString("key_sucursal");
+            String key_almacen = compra.optString("key_almacen", null);
 
             // Obtenemos el almacen 1 hay q ver q hacer con esto
-            JSONObject almacen = SPGConect.ejecutarConsultaObject(
+            JSONObject almacen = null;
+            
+            if(key_almacen == null){
+                almacen = SPGConect.ejecutarConsultaObject(
                     "select to_json(almacen.*) as json \n"
                             + "from almacen where  almacen.estado > 0 and almacen.key_sucursal = '"
                             + key_sucursal + "' limit 1");
+            }else{
+                almacen = SPGConect.ejecutarConsultaObject(
+                    "select to_json(almacen.*) as json \n"
+                            + "from almacen where  almacen.estado > 0 and almacen.key = '"
+                            + key_almacen + "' limit 1");
+            }
 
             if(almacen == null || almacen.isEmpty()) {
                 throw new Exception("No hay un almacen configurado para esta sucursal");
@@ -522,7 +533,18 @@ public class Modelo {
             double porc_iva = Contabilidad.getEnviroment(asiento_contable.key_empresa, "IVA").optDouble("observacion",0);
             // JSONArray movimientosContablesInventario = new JSONArray();
 
+             
+            
+
             for (int i = 0; i < detalle.length(); i++) {
+                
+                JSONObject tags = obj.getJSONObject("tags")
+                .put("key_usuario", obj.getJSONObject("compra").getString("key_usuario"))
+                .put("key_compra_venta", compra.getString("key"))
+                .put("key_almacen", key_almacen)
+                .put("key_sucursal", key_sucursal);
+
+
                 JSONObject compra_detalle = detalle.getJSONObject(i);
                 
 
@@ -589,9 +611,18 @@ public class Modelo {
                 }
 
                 subtotal = Math.round(subtotal * 100.0) /100.0;
-                asiento_contable
-                        .setDetalle(new AsientoContableDetalle(key_cuenta_contable, "Compra rapida - "+compra_detalle.optString("detalle")).setDebe(subtotal));
 
+                tags.put("key_tipo_producto", tipo_producto.getString("key"));
+                tags.put("key_modelo", compra_detalle.getString("key_modelo"));
+
+                asiento_contable.setDetalle(new AsientoContableDetalle(
+                    key_cuenta_contable,
+                    "Compra rapida - "+compra_detalle.optString("detalle"), 
+                    "debe", 
+                    subtotal,
+                    subtotal,
+                    tags));
+              
             }
 
             asiento_contable.enviar();
@@ -632,13 +663,22 @@ public class Modelo {
             }
 
             String key_sucursal = venta.getString("key_sucursal");
-
-            // Obtenemos el almacen 1 hay q ver q hacer con esto
-            JSONObject almacen = SPGConect.ejecutarConsultaObject(
+            String key_almacen = venta.optString("key_almacen", null);
+            
+            JSONObject almacen = null;
+           
+            if(key_almacen == null){
+                almacen = SPGConect.ejecutarConsultaObject(
                     "select to_json(almacen.*) as json \n"
                             + "from almacen where  almacen.estado > 0 and almacen.key_sucursal = '"
                             + key_sucursal + "' limit 1");
-            
+            }else{  
+                almacen = SPGConect.ejecutarConsultaObject(
+                    "select to_json(almacen.*) as json \n"
+                            + "from almacen where  almacen.estado > 0 and almacen.key = '"
+                            + key_almacen + "' limit 1");
+            }
+
             
             if(almacen == null || almacen.isEmpty()) {
                 throw new Exception("No hay un almacen configurado para esta sucursal");
@@ -649,6 +689,15 @@ public class Modelo {
 
             AsientoContable asiento_contable = AsientoContable.fromJSON(obj.optJSONObject("asiento_contable"));
             double total_debe = 0;
+
+            JSONObject moneda = obj.getJSONObject("monedaCaja");
+
+
+            JSONObject tags = new JSONObject()
+                .put("key_usuario", obj.getJSONObject("venta").getString("key_usuario"))
+                .put("key_compra_venta", venta.getString("key"))
+                .put("key_almacen", key_almacen)
+                .put("key_sucursal", key_sucursal);
             // // JSONArray movimientosContablesInventario = new JSONArray();
 
             for (int i = 0; i < detalle.length(); i++) {
@@ -664,12 +713,14 @@ public class Modelo {
                     throw new Exception("El modelo con key " + compra_detalle.getString("key_modelo")
                             + " no existe o no es valido");
                 }
+
+                tags.put("key_modelo", modelo.getString("key"));
                 double cantidad = compra_detalle.getDouble("cantidad");
                 double precio_unitario = compra_detalle.getDouble("precio_unitario");
                 double descuento = compra_detalle.optDouble("descuento", 0);
                 JSONObject tipo_producto = TipoProducto.getByKey(modelo.getString("key_tipo_producto"));
 
-              
+                tags.put("key_tipo_producto", tipo_producto.getString("key"));
 
                 String key_cuenta_contable_ingreso = tipo_producto.getString("key_cuenta_contable_ganancia");
                
@@ -688,7 +739,7 @@ public class Modelo {
                                     + key_sucursal + "'," + cantidad + ",'" + "" + "','"
                                     + TipoMovimientoCardex.egreso_venta.name()
                                     + "', null, '" + dataExtra.toString() + "') as json");
-                    System.out.println(arrInsertado);
+                    //System.out.println(arrInsertado);
                     if (arrInsertado.length() == 0) {
                         throw new Exception("No se pudo retirar el producto del inventario");
                     }
@@ -710,19 +761,37 @@ public class Modelo {
                         throw new Exception("El producto no cuenta con stock");
                     }
 
-                    asiento_contable
-                            .setDetalle(new AsientoContableDetalle(key_cuenta_contable, "Inventario").setHaber(totalCosto));
+                    asiento_contable.setDetalle(new AsientoContableDetalle(
+                        key_cuenta_contable,
+                        "Inventario", 
+                        "haber", 
+                        totalCosto,
+                        totalCosto * moneda.getDouble("tipo_cambio"),
+                        tags));
 
-                    asiento_contable
-                        .setDetalle(new AsientoContableDetalle(key_cuenta_contable_gasto, "Costo de ventas")
-                                .setDebe(totalCosto));
+                    asiento_contable.setDetalle(new AsientoContableDetalle(
+                        key_cuenta_contable_gasto,
+                        "Costo de ventas", 
+                        "debe", 
+                        totalCosto,
+                        totalCosto * moneda.getDouble("tipo_cambio"),
+                        tags));
+
+                    
                     
                      if(totalDepreciacion>0 ){
                         if(!tipo_producto.has("key_cuenta_contable_depreciacion") || tipo_producto.isNull("key_cuenta_contable_depreciacion")){
                             throw new Exception("No se encontró la cuenta contable de depreciación");
                         }
-                        asiento_contable.setDetalle(new AsientoContableDetalle(tipo_producto.optString("key_cuenta_contable_depreciacion"), "Depreciación")
-                                .setHaber(totalDepreciacion));
+                     
+                        asiento_contable.setDetalle(new AsientoContableDetalle(
+                            tipo_producto.optString("key_cuenta_contable_depreciacion"),
+                            "Depreciacións", 
+                            "haber", 
+                            totalDepreciacion,
+                            totalDepreciacion * moneda.getDouble("tipo_cambio"),
+                            tags));
+                            
                     }
                     
                 }else{
@@ -753,11 +822,13 @@ public class Modelo {
                 double ingreso =(precio_unitario * cantidad) - descuento;
                 double impuesto = obj.optDouble("porcentaje_impuesto", 0);
                 if(impuesto>0) impuesto=impuesto/100;
-
-                asiento_contable.setDetalle(new AsientoContableDetalle(key_cuenta_contable_ingreso, "Ventas")
-                        .setHaber(ingreso-(ingreso*impuesto)));
-
-              
+                asiento_contable.setDetalle(new AsientoContableDetalle(
+                    key_cuenta_contable_ingreso,
+                    "Ventas", 
+                    "haber", 
+                    ingreso-(ingreso*impuesto),
+                    ingreso-(ingreso*impuesto) * moneda.getDouble("tipo_cambio"),
+                    tags));
 
             }
 

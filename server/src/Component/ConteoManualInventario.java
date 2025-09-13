@@ -5,7 +5,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import com.google.gson.JsonObject;
 
-import Contabilidad.Contabilidad;
+import Contabilidad.ContaHook;
 import Models.TipoMovimientoCardex;
 import Servisofts.SConsole;
 import Servisofts.SPGConect;
@@ -202,7 +202,7 @@ public class ConteoManualInventario {
                     WHERE conteo_manual_inventario.key = '%s'
                     """.formatted(key_conteo));
 
-            String key_cuenta_contable_inventario_perdida_por_merma = Contabilidad
+            String key_cuenta_contable_inventario_perdida_por_merma = ContaHook
                     .getAjusteEmpresa(key_empresa, "inventario_perdida_por_merma").optString("key");
 
             AsientoContable asiento = new AsientoContable(AsientoContableTipo.egreso);
@@ -210,6 +210,8 @@ public class ConteoManualInventario {
             asiento.observacion = "Aplicación de conteo manual de inventario";
             asiento.key_empresa = key_empresa;
             asiento.key_usuario = obj.getString("key_usuario");
+
+            JSONObject tags = new JSONObject();
 
             JSONArray arr = conectInstance.ejecutarConsultaArray(consulta);
             // JSONArray detalle = obj.getJSONArray("data");
@@ -224,6 +226,9 @@ public class ConteoManualInventario {
                 double cantidad_baja = item.getDouble("cantidad_baja");
                 double cantidad_perdida = item.getDouble("cantidad_perdida");
                 double cantidad_ganancia = item.getDouble("cantidad_ganancia");
+
+                tags.put("key_modelo", key_modelo);
+                tags.put("key_almacen", key_almacen);
 
                 String key_cuenta_contable_inventario = conectInstance.ejecutarConsultaString("""
                         select tipo_producto.key_cuenta_contable
@@ -248,13 +253,21 @@ public class ConteoManualInventario {
 
                         }
 
-                        asiento.setDetalle(
-                                new AsientoContableDetalle(key_cuenta_contable_inventario_perdida_por_merma,
-                                        "Cuenta de Pérdida por Baja")
-                                        .setDebe(monto_baja));
-                        asiento.setDetalle(
-                                new AsientoContableDetalle(key_cuenta_contable_inventario, "Cuenta de Inventario")
-                                        .setHaber(monto_baja));
+                        asiento.setDetalle(new AsientoContableDetalle(
+                            key_cuenta_contable_inventario_perdida_por_merma,
+                            "Cuenta de Pérdida por Baja", 
+                            "debe", 
+                            monto_baja,
+                            monto_baja,
+                            tags));
+                        
+                        asiento.setDetalle(new AsientoContableDetalle(
+                            key_cuenta_contable_inventario,
+                            "Cuenta de Inventario", 
+                            "haber", 
+                            monto_baja,
+                            monto_baja,
+                            tags));
 
                         System.out.println("Registrar baja: " + cantidad_baja + " del modelo: " + key_modelo
                                 + " en el almacén: " + key_almacen);
@@ -274,13 +287,22 @@ public class ConteoManualInventario {
                                     * (-itemInsertado.getDouble("cantidad"));
 
                         }
-                        asiento.setDetalle(
-                                new AsientoContableDetalle(key_cuenta_contable_inventario_perdida_por_merma,
-                                        "Cuenta de Pérdida por merma")
-                                        .setDebe(monto_baja));
-                        asiento.setDetalle(
-                                new AsientoContableDetalle(key_cuenta_contable_inventario, "Cuenta de Inventario")
-                                        .setHaber(monto_baja));
+                        asiento.setDetalle(new AsientoContableDetalle(
+                            key_cuenta_contable_inventario_perdida_por_merma,
+                            "Cuenta de Pérdida por merma", 
+                            "debe", 
+                            monto_baja,
+                            monto_baja,
+                            tags));
+
+                        asiento.setDetalle(new AsientoContableDetalle(
+                            key_cuenta_contable_inventario,
+                            "Cuenta de Inventario", 
+                            "haber", 
+                            monto_baja,
+                            monto_baja,
+                            tags));
+                       
 
                         System.out.println("Registrar pérdida: " + cantidad_perdida + " del modelo: " + key_modelo
                                 + " en el almacén: " + key_almacen);
