@@ -19,6 +19,7 @@ import Servisofts.Contabilidad.Contabilidad;
 import Util.ConectInstance;
 import picocli.CommandLine.Model;
 import Servisofts.Server.SSSAbstract.SSSessionAbstract;
+import Servisofts.SocketCliente.SocketCliente;
 
 public class Modelo {
     public static final String COMPONENT = "modelo";
@@ -54,6 +55,12 @@ public class Modelo {
                 break;
             case "getAllProductos":
                 getAllProductos(obj, session);
+                break;
+            case "compraCaja":
+                compraCaja(obj, session);
+                break;
+            case "ventaCaja":
+                ventaCaja(obj, session);
                 break;
             case "compraRapida":
                 compraRapida(obj, session);
@@ -489,6 +496,223 @@ public class Modelo {
         }
     }
 
+    public static void compraCaja(JSONObject obj, SSSessionAbstract session) {
+        ConectInstance conectInstance = null;
+        try {
+            conectInstance = new ConectInstance();
+            conectInstance.Transacction();
+            JSONObject data = obj.getJSONObject("data");
+            JSONObject compra_venta = obj.getJSONObject("data").getJSONObject("compra_venta");
+            JSONArray detalle = obj.getJSONObject("data").getJSONArray("detalle");
+
+            // JSONObject detalle =
+            String key_almacen = data.getString("key_almacen");
+            JSONObject almacen = conectInstance.ejecutarConsultaObject("""
+                        select to_json(almacen.*) as json
+                        from almacen where  almacen.estado > 0 and almacen.key = '%s'
+                        limit 1
+                    """.formatted(key_almacen));
+
+            if (almacen == null || almacen.isEmpty()) {
+                throw new Exception("No se encontro el almacen");
+            }
+
+            double porc_iva = 0;
+            if (data.optBoolean("facturar", false)) {
+                porc_iva = Contabilidad.getEnviroment(compra_venta.getString("key_empresa"), "IVA")
+                        .optDouble("observacion", 0);
+            }
+
+            JSONArray productos = new JSONArray();
+            for (int i = 0; i < detalle.length(); i++) {
+
+                JSONObject compra_detalle = detalle.getJSONObject(i);
+
+                if (!compra_detalle.has("key_modelo") || !compra_detalle.has("cantidad")
+                        || !compra_detalle.has("precio_unitario")) {
+                    throw new Exception("El item debe tener key_modelo, cantidad y precio_unitario");
+                }
+                JSONObject modelo = Modelo.getByKey(compra_detalle.getString("key_modelo"));
+                if (modelo == null) {
+                    throw new Exception("El modelo con key " + compra_detalle.getString("key_modelo")
+                            + " no existe o no es valido");
+                }
+                double cantidad = compra_detalle.getDouble("cantidad");
+                double precio_unitario = compra_detalle.getDouble("precio_unitario");
+                if (data.optBoolean("facturar", false)) {
+                    // Hasta q ruddy vea venta
+                    precio_unitario = (precio_unitario / (1 + (porc_iva / 100)));
+                }
+
+                precio_unitario = (Math.round(precio_unitario * 100)) / 100.00;
+                JSONObject tipo_producto = TipoProducto.getByKey(modelo.getString("key_tipo_producto"));
+                compra_detalle.put("tipo_producto", tipo_producto);
+                JSONObject producto = new JSONObject();
+                producto.put("key", SUtil.uuid());
+                producto.put("estado", 1);
+                producto.put("fecha_on", SUtil.now());
+                producto.put("key_usuario", data.getString("key_usuario"));
+                producto.put("key_modelo", compra_detalle.getString("key_modelo"));
+                producto.put("precio_compra", precio_unitario);
+                producto.put("nombre",
+                        modelo.getString("descripcion") + " - " + compra_detalle.optString("detalle", ""));
+                producto.put("key_empresa", compra_venta.getString("key_empresa"));
+                producto.put("key_compra_venta_detalle", compra_detalle.getString("key"));
+
+                conectInstance.insertObject("producto", producto);
+                producto.put("tipo_producto", tipo_producto);
+
+                JSONObject cardex = InventarioCardex.CrearMovimiento(
+                        producto.getString("key"),
+                        TipoMovimientoCardex.ingreso_compra,
+                        cantidad,
+                        almacen.getString("key"),
+                        data.getString("key_usuario"));
+                conectInstance.insertObject("inventario_cardex", cardex);
+
+                producto.put("cardex", cardex);
+
+                productos.put(producto);
+            }
+            data.put("productos", productos);
+
+            JSONObject request = new JSONObject();
+            request.put("component", "asiento_contable");
+            request.put("type", "compra_caja");
+            request.put("data", data);
+            JSONObject response = SocketCliente.sendSinc("contabilidad", request);
+            if (!response.optString("estado").equals("exito")) {
+                throw new Exception(response.getString("error"));
+            }
+            obj.put("data", response.getJSONObject("data"));
+            obj.put("estado", "exito");
+            conectInstance.commit();
+        } catch (Exception e) {
+            obj.put("estado", "error");
+            obj.put("error", e.getMessage());
+            e.printStackTrace();
+            conectInstance.rollback();
+        } finally {
+            if (conectInstance != null) {
+                conectInstance.close();
+            }
+        }
+    }
+
+    public static void ventaCaja(JSONObject obj, SSSessionAbstract session) {
+        ConectInstance conectInstance = null;
+        try {
+            conectInstance = new ConectInstance();
+            conectInstance.Transacction();
+            JSONObject data = obj.getJSONObject("data");
+            JSONObject venta = obj.getJSONObject("data").getJSONObject("compra_venta");
+            String key_sucursal = venta.getString("key_sucursal");
+            JSONArray detalle = obj.getJSONObject("data").getJSONArray("detalle");
+            for (int i = 0; i < detalle.length(); i++) {
+                JSONObject compra_detalle = detalle.getJSONObject(i);
+
+                if (!compra_detalle.has("key_modelo") || !compra_detalle.has("cantidad")
+                        || !compra_detalle.has("precio_unitario")) {
+                    throw new Exception("El item debe tener key_modelo, cantidad y precio_unitario");
+                }
+
+                JSONObject modelo = Modelo.getByKey(compra_detalle.getString("key_modelo"));
+                if (modelo == null) {
+                    throw new Exception("El modelo con key " + compra_detalle.getString("key_modelo")
+                            + " no existe o no es valido");
+                }
+
+                double cantidad = compra_detalle.getDouble("cantidad");
+                double precio_unitario = compra_detalle.getDouble("precio_unitario");
+                double descuento = compra_detalle.optDouble("descuento", 0);
+                JSONObject tipo_producto = TipoProducto.getByKey(modelo.getString("key_tipo_producto"));
+                compra_detalle.put("tipo_producto", tipo_producto);
+
+                JSONObject dataExtra = new JSONObject();
+                dataExtra.put("key_compra_venta", venta.getString("key"));
+                dataExtra.put("key_compra_venta_detalle", compra_detalle.getString("key"));
+                dataExtra.put("precio_unitario_venta", precio_unitario);
+
+                switch (tipo_producto.getString("tipo")) {
+                    case "inventario" -> {
+                        JSONArray arrInsertado = conectInstance.ejecutarConsultaArray(
+                                "select retirar_productos_por_modelo('" + compra_detalle.getString("key_modelo")
+                                        + "', '"
+                                        + key_sucursal + "'," + cantidad + ",'" + venta.getString("key_usuario") + "','"
+                                        + TipoMovimientoCardex.egreso_venta.name()
+                                        + "', null, '" + dataExtra.toString() + "') as json");
+
+                        if (arrInsertado.length() == 0) {
+                            throw new Exception("No se pudo retirar el producto del inventario");
+                        }
+                        double cantidad_retirada = 0;
+                        for (int j = 0; j < arrInsertado.length(); j++) {
+                            cantidad_retirada += arrInsertado.getJSONObject(j).getDouble("cantidad");
+                        }
+                        if ((cantidad_retirada * -1) < cantidad) {
+                            throw new Exception(
+                                    "No se pudo retirar el producto del inventario, solo quedan " + cantidad_retirada);
+                        }
+                        compra_detalle.put("cardex", arrInsertado);
+                    }
+
+                    case "servicio" -> {
+                        JSONObject producto = new JSONObject();
+                        producto.put("key", SUtil.uuid());
+                        producto.put("estado", 1);
+                        producto.put("fecha_on", SUtil.now());
+                        producto.put("key_usuario", venta.getString("key_usuario"));
+                        producto.put("key_modelo", compra_detalle.getString("key_modelo"));
+                        producto.put("precio", precio_unitario);
+                        producto.put("nombre", modelo.getString("descripcion"));
+                        producto.put("key_empresa", tipo_producto.getString("key_empresa"));
+                        producto.put("key_compra_venta_detalle", compra_detalle.getString("key"));
+
+                        conectInstance.insertObject("producto", producto);
+
+                        JSONObject cardex = InventarioCardex.CrearMovimiento(
+                                producto.getString("key"),
+                                TipoMovimientoCardex.egreso_venta,
+                                cantidad * -1,
+                                null,
+                                venta.getString("key_usuario"));
+                        cardex.put("precio_compra", precio_unitario);
+                        conectInstance.insertObject("inventario_cardex", cardex);
+                        compra_detalle.put("cardex", new JSONArray().put(cardex));
+                    }
+                    case "activo_fijo" -> {
+                        throw new Exception("Aun no implementados la opcion de vender activos fijos");
+                    }
+                    case "consumible" -> {
+                        throw new Exception("Aun no implementados la opcion de vender consumibles");
+                    }
+                }
+                // System.out.println(tipo_producto);
+            }
+
+            JSONObject request = new JSONObject();
+            request.put("component", "asiento_contable");
+            request.put("type", "venta_caja");
+            request.put("data", data);
+            JSONObject response = SocketCliente.sendSinc("contabilidad", request);
+            if (!response.optString("estado").equals("exito")) {
+                throw new Exception(response.getString("error"));
+            }
+            obj.put("data", response.getJSONObject("data"));
+            obj.put("estado", "exito");
+            conectInstance.commit();
+        } catch (Exception e) {
+            obj.put("estado", "error");
+            obj.put("error", e.getMessage());
+            e.printStackTrace();
+            conectInstance.rollback();
+        } finally {
+            if (conectInstance != null) {
+                conectInstance.close();
+            }
+        }
+    }
+
     public static void compraRapida(JSONObject obj, SSSessionAbstract session) {
         ConectInstance conectInstance = null;
         try {
@@ -508,20 +732,20 @@ public class Modelo {
 
             // Obtenemos el almacen 1 hay q ver q hacer con esto
             JSONObject almacen = null;
-            
-            if(key_almacen == null){
+
+            if (key_almacen == null) {
                 almacen = SPGConect.ejecutarConsultaObject(
-                    "select to_json(almacen.*) as json \n"
-                            + "from almacen where  almacen.estado > 0 and almacen.key_sucursal = '"
-                            + key_sucursal + "' limit 1");
-            }else{
+                        "select to_json(almacen.*) as json \n"
+                                + "from almacen where  almacen.estado > 0 and almacen.key_sucursal = '"
+                                + key_sucursal + "' limit 1");
+            } else {
                 almacen = SPGConect.ejecutarConsultaObject(
-                    "select to_json(almacen.*) as json \n"
-                            + "from almacen where  almacen.estado > 0 and almacen.key = '"
-                            + key_almacen + "' limit 1");
+                        "select to_json(almacen.*) as json \n"
+                                + "from almacen where  almacen.estado > 0 and almacen.key = '"
+                                + key_almacen + "' limit 1");
             }
 
-            if(almacen == null || almacen.isEmpty()) {
+            if (almacen == null || almacen.isEmpty()) {
                 throw new Exception("No hay un almacen configurado para esta sucursal");
             }
 
@@ -530,23 +754,19 @@ public class Modelo {
 
             AsientoContable asiento_contable = AsientoContable.fromJSON(obj.optJSONObject("asiento_contable"));
 
-            double porc_iva = Contabilidad.getEnviroment(asiento_contable.key_empresa, "IVA").optDouble("observacion",0);
+            double porc_iva = Contabilidad.getEnviroment(asiento_contable.key_empresa, "IVA").optDouble("observacion",
+                    0);
             // JSONArray movimientosContablesInventario = new JSONArray();
 
-             
-            
-
             for (int i = 0; i < detalle.length(); i++) {
-                
-                JSONObject tags = obj.getJSONObject("tags")
-                .put("key_usuario", obj.getJSONObject("compra").getString("key_usuario"))
-                .put("key_compra_venta", compra.getString("key"))
-                .put("key_almacen", key_almacen)
-                .put("key_sucursal", key_sucursal);
 
+                JSONObject tags = obj.getJSONObject("tags")
+                        .put("key_usuario", obj.getJSONObject("compra").getString("key_usuario"))
+                        .put("key_compra_venta", compra.getString("key"))
+                        .put("key_almacen", key_almacen)
+                        .put("key_sucursal", key_sucursal);
 
                 JSONObject compra_detalle = detalle.getJSONObject(i);
-                
 
                 if (!compra_detalle.has("key_modelo") || !compra_detalle.has("cantidad")
                         || !compra_detalle.has("precio_unitario")) {
@@ -561,16 +781,15 @@ public class Modelo {
                 double cantidad = compra_detalle.getDouble("cantidad");
                 double precio_unitario = compra_detalle.getDouble("precio_unitario");
                 if (compra.optBoolean("facturar", false)) {
-                    //if(!compra.optBoolean("facturar_luego", false)){
-                        precio_unitario = (precio_unitario / (1 + (porc_iva/100)));
-                        //precio_unitario=Math.round(precio_unitario * 100.0) /100.0;
-                    //}
-                    
+                    // if(!compra.optBoolean("facturar_luego", false)){
+                    precio_unitario = (precio_unitario / (1 + (porc_iva / 100)));
+                    // precio_unitario=Math.round(precio_unitario * 100.0) /100.0;
+                    // }
+
                 }
                 double subtotal = cantidad * precio_unitario;
                 JSONObject tipo_producto = TipoProducto.getByKey(modelo.getString("key_tipo_producto"));
-                
-                
+
                 JSONObject producto = new JSONObject();
                 producto.put("key", SUtil.uuid());
                 producto.put("estado", 1);
@@ -578,51 +797,51 @@ public class Modelo {
                 producto.put("key_usuario", compra.getString("key_usuario"));
                 producto.put("key_modelo", compra_detalle.getString("key_modelo"));
                 producto.put("precio_compra", precio_unitario);
-                producto.put("nombre", modelo.getString("descripcion")+" - "+compra_detalle.optString("detalle",""));
+                producto.put("nombre",
+                        modelo.getString("descripcion") + " - " + compra_detalle.optString("detalle", ""));
                 producto.put("key_empresa", tipo_producto.getString("key_empresa"));
                 producto.put("key_compra_venta_detalle", compra_detalle.getString("key"));
 
                 conectInstance.insertObject("producto", producto);
 
-
                 String key_cuenta_contable = "";
-                if(tipo_producto.has("key_cuenta_contable") && !tipo_producto.isNull("key_cuenta_contable")){
+                if (tipo_producto.has("key_cuenta_contable") && !tipo_producto.isNull("key_cuenta_contable")) {
 
                     JSONObject cardex = InventarioCardex.CrearMovimiento(
-                        producto.getString("key"),
-                        TipoMovimientoCardex.ingreso_compra,
-                        cantidad,
-                        almacen.getString("key"),
-                        compra.getString("key_usuario"));
+                            producto.getString("key"),
+                            TipoMovimientoCardex.ingreso_compra,
+                            cantidad,
+                            almacen.getString("key"),
+                            compra.getString("key_usuario"));
 
                     conectInstance.insertObject("inventario_cardex", cardex);
                     key_cuenta_contable = tipo_producto.getString("key_cuenta_contable");
-                }else{
+                } else {
                     key_cuenta_contable = tipo_producto.getString("key_cuenta_contable_costo");
 
-                      JSONObject cardex = InventarioCardex.CrearMovimiento(
-                        producto.getString("key"),
-                        TipoMovimientoCardex.ingreso_compra,
-                        cantidad,
-                        almacen.getString("key"),
-                        compra.getString("key_usuario"));
+                    JSONObject cardex = InventarioCardex.CrearMovimiento(
+                            producto.getString("key"),
+                            TipoMovimientoCardex.ingreso_compra,
+                            cantidad,
+                            almacen.getString("key"),
+                            compra.getString("key_usuario"));
 
                     conectInstance.insertObject("inventario_cardex", cardex);
                 }
 
-                subtotal = Math.round(subtotal * 100.0) /100.0;
+                subtotal = Math.round(subtotal * 100.0) / 100.0;
 
                 tags.put("key_tipo_producto", tipo_producto.getString("key"));
                 tags.put("key_modelo", compra_detalle.getString("key_modelo"));
 
                 asiento_contable.setDetalle(new AsientoContableDetalle(
-                    key_cuenta_contable,
-                    "Compra rapida - "+compra_detalle.optString("detalle"), 
-                    "debe", 
-                    subtotal,
-                    subtotal,
-                    tags));
-              
+                        key_cuenta_contable,
+                        "Compra rapida - " + compra_detalle.optString("detalle"),
+                        "debe",
+                        subtotal,
+                        subtotal,
+                        tags));
+
             }
 
             asiento_contable.enviar();
@@ -664,23 +883,22 @@ public class Modelo {
 
             String key_sucursal = venta.getString("key_sucursal");
             String key_almacen = venta.optString("key_almacen", null);
-            
+
             JSONObject almacen = null;
-           
-            if(key_almacen == null){
+
+            if (key_almacen == null) {
                 almacen = SPGConect.ejecutarConsultaObject(
-                    "select to_json(almacen.*) as json \n"
-                            + "from almacen where  almacen.estado > 0 and almacen.key_sucursal = '"
-                            + key_sucursal + "' limit 1");
-            }else{  
+                        "select to_json(almacen.*) as json \n"
+                                + "from almacen where  almacen.estado > 0 and almacen.key_sucursal = '"
+                                + key_sucursal + "' limit 1");
+            } else {
                 almacen = SPGConect.ejecutarConsultaObject(
-                    "select to_json(almacen.*) as json \n"
-                            + "from almacen where  almacen.estado > 0 and almacen.key = '"
-                            + key_almacen + "' limit 1");
+                        "select to_json(almacen.*) as json \n"
+                                + "from almacen where  almacen.estado > 0 and almacen.key = '"
+                                + key_almacen + "' limit 1");
             }
 
-            
-            if(almacen == null || almacen.isEmpty()) {
+            if (almacen == null || almacen.isEmpty()) {
                 throw new Exception("No hay un almacen configurado para esta sucursal");
             }
 
@@ -692,12 +910,11 @@ public class Modelo {
 
             JSONObject moneda = obj.getJSONObject("monedaCaja");
 
-
             JSONObject tags = new JSONObject()
-                .put("key_usuario", obj.getJSONObject("venta").getString("key_usuario"))
-                .put("key_compra_venta", venta.getString("key"))
-                .put("key_almacen", key_almacen)
-                .put("key_sucursal", key_sucursal);
+                    .put("key_usuario", obj.getJSONObject("venta").getString("key_usuario"))
+                    .put("key_compra_venta", venta.getString("key"))
+                    .put("key_almacen", key_almacen)
+                    .put("key_sucursal", key_sucursal);
             // // JSONArray movimientosContablesInventario = new JSONArray();
 
             for (int i = 0; i < detalle.length(); i++) {
@@ -723,10 +940,8 @@ public class Modelo {
                 tags.put("key_tipo_producto", tipo_producto.getString("key"));
 
                 String key_cuenta_contable_ingreso = tipo_producto.getString("key_cuenta_contable_ganancia");
-               
 
-
-                if(tipo_producto.has("key_cuenta_contable") && !tipo_producto.isNull("key_cuenta_contable")){
+                if (tipo_producto.has("key_cuenta_contable") && !tipo_producto.isNull("key_cuenta_contable")) {
                     String key_cuenta_contable_gasto = tipo_producto.optString("key_cuenta_contable_costo");
                     String key_cuenta_contable = tipo_producto.getString("key_cuenta_contable");
                     JSONObject dataExtra = new JSONObject();
@@ -739,22 +954,22 @@ public class Modelo {
                                     + key_sucursal + "'," + cantidad + ",'" + "" + "','"
                                     + TipoMovimientoCardex.egreso_venta.name()
                                     + "', null, '" + dataExtra.toString() + "') as json");
-                    //System.out.println(arrInsertado);
+                    // System.out.println(arrInsertado);
                     if (arrInsertado.length() == 0) {
                         throw new Exception("No se pudo retirar el producto del inventario");
                     }
-                
 
                     double totalCosto = 0;
                     double totalDepreciacion = 0;
                     double cant = 0;
                     for (int j = 0; j < arrInsertado.length(); j++) {
                         JSONObject productoInventario = arrInsertado.getJSONObject(j);
-                        cant+=productoInventario.getDouble("cantidad")*-1;
+                        cant += productoInventario.getDouble("cantidad") * -1;
                         totalCosto += productoInventario.getDouble("precio_compra")
                                 * (productoInventario.getDouble("cantidad") * -1);
 
-                        totalDepreciacion += productoInventario.optDouble("depreciacion",0) * (productoInventario.getDouble("cantidad"));
+                        totalDepreciacion += productoInventario.optDouble("depreciacion", 0)
+                                * (productoInventario.getDouble("cantidad"));
                     }
 
                     if (cant < cantidad) {
@@ -762,39 +977,38 @@ public class Modelo {
                     }
 
                     asiento_contable.setDetalle(new AsientoContableDetalle(
-                        key_cuenta_contable,
-                        "Inventario", 
-                        "haber", 
-                        totalCosto,
-                        totalCosto * moneda.getDouble("tipo_cambio"),
-                        tags));
+                            key_cuenta_contable,
+                            "Inventario",
+                            "haber",
+                            totalCosto,
+                            totalCosto * moneda.getDouble("tipo_cambio"),
+                            tags));
 
                     asiento_contable.setDetalle(new AsientoContableDetalle(
-                        key_cuenta_contable_gasto,
-                        "Costo de ventas", 
-                        "debe", 
-                        totalCosto,
-                        totalCosto * moneda.getDouble("tipo_cambio"),
-                        tags));
+                            key_cuenta_contable_gasto,
+                            "Costo de ventas",
+                            "debe",
+                            totalCosto,
+                            totalCosto * moneda.getDouble("tipo_cambio"),
+                            tags));
 
-                    
-                    
-                     if(totalDepreciacion>0 ){
-                        if(!tipo_producto.has("key_cuenta_contable_depreciacion") || tipo_producto.isNull("key_cuenta_contable_depreciacion")){
+                    if (totalDepreciacion > 0) {
+                        if (!tipo_producto.has("key_cuenta_contable_depreciacion")
+                                || tipo_producto.isNull("key_cuenta_contable_depreciacion")) {
                             throw new Exception("No se encontró la cuenta contable de depreciación");
                         }
-                     
+
                         asiento_contable.setDetalle(new AsientoContableDetalle(
-                            tipo_producto.optString("key_cuenta_contable_depreciacion"),
-                            "Depreciacións", 
-                            "haber", 
-                            totalDepreciacion,
-                            totalDepreciacion * moneda.getDouble("tipo_cambio"),
-                            tags));
-                            
+                                tipo_producto.optString("key_cuenta_contable_depreciacion"),
+                                "Depreciacións",
+                                "haber",
+                                totalDepreciacion,
+                                totalDepreciacion * moneda.getDouble("tipo_cambio"),
+                                tags));
+
                     }
-                    
-                }else{
+
+                } else {
                     JSONObject producto = new JSONObject();
                     producto.put("key", SUtil.uuid());
                     producto.put("estado", 1);
@@ -809,29 +1023,28 @@ public class Modelo {
                     conectInstance.insertObject("producto", producto);
 
                     JSONObject cardex = InventarioCardex.CrearMovimiento(
-                        producto.getString("key"),
-                        TipoMovimientoCardex.egreso_venta,
-                        cantidad*-1,
-                        almacen.getString("key"),
-                        venta.getString("key_usuario"));
+                            producto.getString("key"),
+                            TipoMovimientoCardex.egreso_venta,
+                            cantidad * -1,
+                            almacen.getString("key"),
+                            venta.getString("key_usuario"));
 
                     conectInstance.insertObject("inventario_cardex", cardex);
                 }
 
-
-                double ingreso =(precio_unitario * cantidad) - descuento;
+                double ingreso = (precio_unitario * cantidad) - descuento;
                 double impuesto = obj.optDouble("porcentaje_impuesto", 0);
-                if(impuesto>0) impuesto=impuesto/100;
+                if (impuesto > 0)
+                    impuesto = impuesto / 100;
                 asiento_contable.setDetalle(new AsientoContableDetalle(
-                    key_cuenta_contable_ingreso,
-                    "Ventas", 
-                    "haber", 
-                    ingreso-(ingreso*impuesto),
-                    ingreso-(ingreso*impuesto) * moneda.getDouble("tipo_cambio"),
-                    tags));
+                        key_cuenta_contable_ingreso,
+                        "Ventas",
+                        "haber",
+                        ingreso - (ingreso * impuesto),
+                        ingreso - (ingreso * impuesto) * moneda.getDouble("tipo_cambio"),
+                        tags));
 
             }
-
 
             asiento_contable.enviar();
             obj.put("asiento_contable", asiento_contable.toJSON());
