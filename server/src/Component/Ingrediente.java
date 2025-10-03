@@ -6,8 +6,8 @@ import Servisofts.SPGConect;
 import Servisofts.SUtil;
 import Servisofts.Server.SSSAbstract.SSSessionAbstract;
 
-public class ModeloIngrediente {
-    public static final String COMPONENT = "modelo_ingrediente";
+public class Ingrediente {
+    public static final String COMPONENT = "ingrediente";
 
     public static void onMessage(JSONObject obj, SSSessionAbstract session) {
         switch (obj.getString("type")) {
@@ -28,10 +28,7 @@ public class ModeloIngrediente {
 
     public static void getAll(JSONObject obj, SSSessionAbstract session) {
         try {
-            String consulta = "select get_all('" + COMPONENT + "', 'key_modelo', '" + obj.getString("key_modelo") + "') as json";
-            if(obj.has("key_ingrediente") && !obj.isNull("key_ingrediente")) {
-                consulta = "select get_all('" + COMPONENT + "', 'key_ingrediente','" + obj.getString("key_ingrediente") + "') as json";
-            }
+            String consulta = "select get_all_modelo('" + obj.getString("key_modelo") + "') as json";
             JSONObject data = SPGConect.ejecutarConsultaObject(consulta);
             obj.put("data", data);
             obj.put("estado", "exito");
@@ -44,7 +41,7 @@ public class ModeloIngrediente {
 
     public static JSONObject getAll(String key_modelo) {
         try {
-            String consulta = "select get_all('" + COMPONENT + "', 'key_modelo', '" + key_modelo + "') as json";
+            String consulta = "select get_all_modelo('" + key_modelo + "') as json";
             return SPGConect.ejecutarConsultaObject(consulta);
         } catch (Exception e) {
             e.printStackTrace();
@@ -67,7 +64,8 @@ public class ModeloIngrediente {
 
     public static JSONObject getByKey(String key_modelo, String key_modelo_ingrediente) {
         try {
-            String consulta = "select get_by_key('" + COMPONENT + "', 'key_modelo','" + key_modelo + "','key_modelo_ingrediente','" + key_modelo_ingrediente + "') as json";
+            String consulta = "select get_by_key('" + COMPONENT + "', 'key_modelo','" + key_modelo
+                    + "','key_modelo_ingrediente','" + key_modelo_ingrediente + "') as json";
             return SPGConect.ejecutarConsultaObject(consulta);
         } catch (Exception e) {
             e.printStackTrace();
@@ -77,6 +75,8 @@ public class ModeloIngrediente {
 
     public static void registro(JSONObject obj, SSSessionAbstract session) {
         try {
+
+           
             JSONObject data = obj.getJSONObject("data");
             data.put("key", SUtil.uuid());
             data.put("estado", 1);
@@ -84,6 +84,7 @@ public class ModeloIngrediente {
             data.put("key_usuario", obj.getString("key_usuario"));
             SPGConect.insertObject(COMPONENT, data);
             obj.put("data", data);
+
             obj.put("estado", "exito");
             obj.put("sendAll", true);
         } catch (Exception e) {
@@ -96,8 +97,10 @@ public class ModeloIngrediente {
 
     public static void editar(JSONObject obj, SSSessionAbstract session) {
         try {
+
             JSONObject data = obj.getJSONObject("data");
             SPGConect.editObject(COMPONENT, data);
+
             obj.put("data", data);
             obj.put("estado", "exito");
         } catch (Exception e) {
