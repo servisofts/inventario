@@ -2,9 +2,11 @@ package Models;
 
 public enum TipoMovimientoCardex {
     ingreso_compra("Ingreso por Compra"),
+    ingreso_produccion("Ingreso por Producción"),
     traspaso_ingreso("Traspaso de Ingreso"),
     traspaso_egreso("Traspaso de Egreso"),
     egreso_venta("Egreso por Venta"),
+    egreso_produccion("Egreso por Producción"),
     devolucion_venta("Devolución de Venta"),
     devolucion_compra("Devolución de Compra"),
     perdida("Pérdida"),

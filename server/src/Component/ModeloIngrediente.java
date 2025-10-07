@@ -28,9 +28,11 @@ public class ModeloIngrediente {
 
     public static void getAll(JSONObject obj, SSSessionAbstract session) {
         try {
-            String consulta = "select get_all('" + COMPONENT + "', 'key_modelo', '" + obj.getString("key_modelo") + "') as json";
-            if(obj.has("key_ingrediente") && !obj.isNull("key_ingrediente")) {
-                consulta = "select get_all('" + COMPONENT + "', 'key_ingrediente','" + obj.getString("key_ingrediente") + "') as json";
+            String consulta = "select get_all('" + COMPONENT + "', 'key_modelo', '" + obj.getString("key_modelo")
+                    + "') as json";
+            if (obj.has("key_ingrediente") && !obj.isNull("key_ingrediente")) {
+                consulta = "select get_all('" + COMPONENT + "', 'key_ingrediente','" + obj.getString("key_ingrediente")
+                        + "') as json";
             }
             JSONObject data = SPGConect.ejecutarConsultaObject(consulta);
             obj.put("data", data);
@@ -67,7 +69,8 @@ public class ModeloIngrediente {
 
     public static JSONObject getByKey(String key_modelo, String key_modelo_ingrediente) {
         try {
-            String consulta = "select get_by_key('" + COMPONENT + "', 'key_modelo','" + key_modelo + "','key_modelo_ingrediente','" + key_modelo_ingrediente + "') as json";
+            String consulta = "select get_by_key('" + COMPONENT + "', 'key_modelo','" + key_modelo
+                    + "','key_modelo_ingrediente','" + key_modelo_ingrediente + "') as json";
             return SPGConect.ejecutarConsultaObject(consulta);
         } catch (Exception e) {
             e.printStackTrace();
@@ -77,7 +80,27 @@ public class ModeloIngrediente {
 
     public static void registro(JSONObject obj, SSSessionAbstract session) {
         try {
+
             JSONObject data = obj.getJSONObject("data");
+
+            String key_modelo = data.getString("key_modelo");
+            String key_ingrediente = data.getString("key_ingrediente");
+
+            String consulta = """
+                    SELECT to_json(modelo_ingrediente.*) as json
+                    FROM modelo_ingrediente
+                    WHERE modelo_ingrediente.estado > 0
+                    AND modelo_ingrediente.key_modelo = '%s'
+                    AND modelo_ingrediente.key_ingrediente = '%s'
+                    limit 1
+                    """.formatted(key_modelo, key_ingrediente);
+            JSONObject saveObject = SPGConect.ejecutarConsultaObject(consulta);
+            if (saveObject != null && !saveObject.isNull("key")) {
+                obj.put("data", saveObject);
+                obj.put("estado", "exito");
+                return;
+            }
+
             data.put("key", SUtil.uuid());
             data.put("estado", 1);
             data.put("fecha_on", SUtil.now());
@@ -92,7 +115,6 @@ public class ModeloIngrediente {
             e.printStackTrace();
         }
     }
-
 
     public static void editar(JSONObject obj, SSSessionAbstract session) {
         try {

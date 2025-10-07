@@ -1,12 +1,8 @@
 package Component;
 
 import java.sql.SQLException;
-
-import org.json.JSONArray;
 import org.json.JSONObject;
-
 import Models.TipoMovimientoCardex;
-import Servisofts.SPGConect;
 import Servisofts.SUtil;
 import Servisofts.Server.SSSAbstract.SSSessionAbstract;
 

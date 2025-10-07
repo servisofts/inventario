@@ -7,7 +7,6 @@ import java.sql.SQLException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import Contabilidad.ContaHook;
 import Models.TipoMovimientoCardex;
 import Servisofts.SConfig;
 import Servisofts.SPGConect;
@@ -17,7 +16,6 @@ import Servisofts.Contabilidad.AsientoContable;
 import Servisofts.Contabilidad.AsientoContableDetalle;
 import Servisofts.Contabilidad.Contabilidad;
 import Util.ConectInstance;
-import picocli.CommandLine.Model;
 import Servisofts.Server.SSSAbstract.SSSessionAbstract;
 import Servisofts.SocketCliente.SocketCliente;
 
@@ -86,8 +84,10 @@ public class Modelo {
     }
 
     public static void producir(JSONObject obj, SSSessionAbstract session) {
-        
+        SPGConectInstance conectInstance = new SPGConectInstance(SConfig.getJSON("data_base"));
+
         try{
+            conectInstance.Transacction();
             String key_sucursal = obj.getString("key_sucursal");
             String key_almacen = obj.getString("key_almacen");
             String key_modelo = obj.getString("key_modelo");
@@ -98,14 +98,30 @@ public class Modelo {
             JSONObject ingredientesReal = Ingrediente.getAll(key_modelo);
             JSONObject almacen = Almacen.getByKey(key_almacen);
 
-
+            if(almacen == null || almacen.isEmpty()){
+                obj.put("estado", "error");
+                obj.put("error", "No se encontro el almacen");
+                return;
+            }
 
             JSONObject ingredientes = obj.getJSONObject("data");
             JSONArray failed = new JSONArray();
-
-            for (int i = 0; i < JSONObject.getNames(ingredientes).length; i++) {
-                String key_ingrediente = JSONObject.getNames(ingredientes)[i];
+            JSONArray ingredienteOk = new JSONArray();
+            if(ingredientesReal != null && !ingredientesReal.isEmpty())
+            for (int i = 0; i < JSONObject.getNames(ingredientesReal).length; i++) {
+                String key_ingrediente = JSONObject.getNames(ingredientesReal)[i];
                 JSONObject ingrediente = ingredientes.getJSONObject(key_ingrediente);
+                
+                if(ingrediente == null || ingrediente.isEmpty()){
+                    if(ingredientesReal.getJSONObject(key_ingrediente).optBoolean("is_required") == true){
+                        obj.put("estado", "error");
+                        obj.put("error", "Falta ingrediente " + ingredientesReal.getJSONObject(key_ingrediente).optString("descripcion"));
+                        return;
+                    }else{
+                        continue;
+                    }
+                }
+
                 System.out.println(ingrediente.optString("descripcion")+": "+ingrediente.optDouble("cantidad"));
 
                 double cantidad_ingrediente_solicitada = 0;
@@ -116,9 +132,14 @@ public class Modelo {
                     System.out.println(" - "+modelo.optString("descripcion")+": "+modelo_ingrediente.optDouble("cantidad"));
                     double stock = getStock(modelo.getString("key"), key_sucursal);
                     System.out.println("Stock: "+stock);
+
                     if(stock < ingrediente.optDouble("cantidad")){
                         failed.put(modelo);
+                    }else{
+                        modelo.put("cantidad", ingrediente.optDouble("cantidad",0));
+                        ingredienteOk.put(modelo);
                     }
+                    
                 }
                 if(ingredientesReal.getJSONObject(key_ingrediente).optBoolean("is_required") == true){
                     if(cantidad_ingrediente_solicitada < ingredientesReal.getJSONObject(key_ingrediente).optDouble("cantidad")){
@@ -134,7 +155,6 @@ public class Modelo {
                     return;
                 }
 
-
             }
 
             if(failed.length() > 0){
@@ -144,37 +164,61 @@ public class Modelo {
                 return;
             }
 
+            JSONObject send = new JSONObject();
+            send.put("key_usuario", obj.getString("key_usuario"));
+            send.put("key_almacen", key_almacen);
+
             JSONObject producto = new JSONObject();
-            producto.put("key", SUtil.uuid());
-            producto.put("fecha_on", SUtil.now());
-            producto.put("estado", 1);
             producto.put("key_usuario", obj.getString("key_usuario"));
             producto.put("descripcion", modeloProducto.optString("descripcion"));
             producto.put("observacion", modeloProducto.optString("observacion"));
             producto.put("key_modelo", key_modelo);
             producto.put("codigo", "XXXX");
             producto.put("nombre", modeloProducto.optString("descripcion"));
-            //producto.put("key_empresa", sucursal.getString("key_empresa"));
+            producto.put("cantidad", 1);
 
+            send.put("data", producto);
 
-            JSONObject inventarioKardex = new JSONObject();
-            inventarioKardex.put("key", SUtil.uuid());
-            inventarioKardex.put("fecha_on", SUtil.now());
-            inventarioKardex.put("key_usuario", obj.getString("key_usuario"));
-            inventarioKardex.put("estado", 1);
-            inventarioKardex.put("key_producto", producto.getString("key"));
-            inventarioKardex.put("key_almacen", almacen.getString("key"));
-            inventarioKardex.put("cantidad", 1);
-            inventarioKardex.put("tipo", "ingreso_produccion");
+            Producto.registro(send, null);
 
+            for (int i = 0; i < ingredienteOk.length(); i++) {
+                JSONObject modelo = ingredienteOk.getJSONObject(i);
+                JSONArray productos = getProductosInventario(conectInstance, modelo.getString("key"), key_sucursal);
+                double cantidadCompra = modelo.optDouble("cantidad",0);
 
+                for (int j = 0; j < productos.length(); j++) {
+                    JSONObject producto_ = productos.getJSONObject(j);
+                    // Realizar las operaciones necesarias con cada producto
+                    if(cantidadCompra <= 0) break;
 
+                    double descuento=0;
+                    if(producto_.optDouble("cantidad",0) > cantidadCompra){
+                        descuento = cantidadCompra;
+                    }else{
+                        descuento = producto_.optDouble("cantidad",0);
+                    }
+                    cantidadCompra -= descuento;
 
+                    JSONObject movimiento = InventarioCardex.CrearMovimiento(
+                        producto_.getString("key"),
+                        TipoMovimientoCardex.egreso_produccion,
+                        descuento*-1,
+                        key_almacen,
+                        obj.getString("key_usuario")
+                    );
+                    SPGConect.insertObject("inventario_cardex", movimiento);
+                }
+            }
+
+            conectInstance.commit();
             obj.put("estado", "exito");
         }catch(Exception e){
             e.printStackTrace();
             obj.put("estado", "error");
             obj.put("error", e.getMessage());
+            conectInstance.rollback();
+        }finally{
+            conectInstance.close();
         }
     }
 
@@ -199,17 +243,20 @@ public class Modelo {
             String consulta = "select array_to_json(array_agg(tabla.*))::json as json \n" +
                     "from ( \n" +
                     "select producto.key, \n" +
-                    "  sum(producto.cantidad) as cantidad, \n" +
+                    "  sum(inventario_cardex.cantidad) as cantidad, \n" +
                     "  sum(producto.precio_compra) as precio_compra, \n" +
-                    "  sum(producto.precio_compra) / sum(producto.cantidad) as precio_compra_unitario \n" +
+                    "  sum(producto.precio_compra) / sum(inventario_cardex.cantidad) as precio_compra_unitario \n" +
                     "from producto, \n" +
+                    "  inventario_cardex, \n" +
                     "  almacen \n" +
                     "where producto.key_modelo = '" + key_modelo + "' \n" +
-                    "  and producto.key_almacen = almacen.key \n" +
+                    "  and inventario_cardex.key_producto = producto.key \n" +
+                    "  and inventario_cardex.estado > 0 \n" +
+                    "  and inventario_cardex.key_almacen = almacen.key \n" +
                     "  and almacen.estado > 0 \n" +
                     "  and producto.estado > 0 \n" +
                     "  and almacen.key_sucursal = '" + key_sucursal + "' \n" +
-                    "  and producto.cantidad > 0  \n" +
+                    "  and inventario_cardex.cantidad > 0  \n" +
                     "group by producto.key \n" +
                     "    order by producto.fecha_on asc \n" +
                     ") tabla";

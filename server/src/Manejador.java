@@ -30,6 +30,7 @@ public class Manejador {
             case Modelo.COMPONENT: Modelo.onMessage(obj, session); break;
             case ModeloIngrediente.COMPONENT: ModeloIngrediente.onMessage(obj, session); break;
             case Ingrediente.COMPONENT: Ingrediente.onMessage(obj, session); break;
+            case Receta.COMPONENT: Receta.onMessage(obj, session); break;
             case CategoriaProducto.COMPONENT: CategoriaProducto.onMessage(obj, session); break;
             case SubProducto.COMPONENT: SubProducto.onMessage(obj, session); break;
             case SubProductoDetalle.COMPONENT: SubProductoDetalle.onMessage(obj, session); break;

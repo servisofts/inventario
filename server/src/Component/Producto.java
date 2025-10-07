@@ -79,6 +79,16 @@ public class Producto {
         }
     }
 
+    public static JSONObject getProducto(String key, String key_sucursal) {
+        try {
+            String consulta = "select get_producto('" + key + "','" + key_sucursal + "') as json";
+            return SPGConect.ejecutarConsultaObject(consulta);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public static void guardar(JSONObject obj, SSSessionAbstract session) {
         try {
             JSONObject data = obj.getJSONObject("data");
@@ -353,36 +363,12 @@ public class Producto {
 
             JSONObject cardex = InventarioCardex.CrearMovimiento(
                     producto.getString("key"),
-                    TipoMovimientoCardex.ingreso_compra,
+                    TipoMovimientoCardex.ingreso_produccion,
                     producto.getDouble("cantidad"),
                     producto.getString("key_almacen"),
                     obj.getString("key_usuario"));
             conectInstance.insertObject("inventario_cardex", cardex);
 
-
-            // Si se desea registrar el producto en la compra venta, descomentar las siguientes
-            // Lo siguiente se esta descontinuando quisas no
-
-            // if (obj.has("key_compra_venta_detalle") && !obj.isNull("key_compra_venta_detalle")) {
-            //     JSONObject dataPeticionCompraVenta = new JSONObject();
-            //     dataPeticionCompraVenta.put("key_compra_venta_detalle", obj.get("key_compra_venta_detalle"));
-            //     dataPeticionCompraVenta.put("key_producto", producto.get("key"));
-            //     dataPeticionCompraVenta.put("cantidad", producto.get("cantidad"));
-
-            //     JSONObject peticionCompraVenta = new JSONObject();
-            //     peticionCompraVenta.put("component", "compra_venta_detalle_producto");
-            //     peticionCompraVenta.put("type", "registro");
-            //     peticionCompraVenta.put("data", dataPeticionCompraVenta);
-            //     peticionCompraVenta.put("key_usuario", obj.get("key_usuario"));
-            //     peticionCompraVenta.put("servicio", obj.get("servicio"));
-            //     if (obj.has("key_sucursal")) {
-            //         peticionCompraVenta.put("key_sucursal", obj.get("key_sucursal"));
-            //     }
-            //     JSONObject respuesta = SocketCliente.sendSinc("compra_venta", peticionCompraVenta, 1000 * 60);
-            //     if (!respuesta.getString("estado").equals("exito")) {
-            //         throw new Exception("compra_venta\n" + respuesta.getString("error"));
-            //     }
-            // }
 
             conectInstance.commit();
 

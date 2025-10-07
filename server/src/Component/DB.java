@@ -2,14 +2,7 @@ package Component;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-
-import Models.TipoMovimientoCardex;
-import Servisofts.SConfig;
 import Servisofts.SPGConect;
-import Servisofts.SPGConectInstance;
-import Servisofts.SUtil;
-import Servisofts.SocketCliente.SocketCliente;
-import Util.ConectInstance;
 import Servisofts.Server.SSSAbstract.SSSessionAbstract;
 
 public class DB {
