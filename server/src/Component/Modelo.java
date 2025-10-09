@@ -91,6 +91,7 @@ public class Modelo {
             String key_sucursal = obj.getString("key_sucursal");
             String key_almacen = obj.getString("key_almacen");
             String key_modelo = obj.getString("key_modelo");
+            double cantidad_producir = obj.getDouble("cantidad");
 
             //JSONObject sucursal = SocketCliente.sendSinc("empresa", new JSONObject().put("component", "sucursal").put("type", "getByKey").put("key", key_sucursal));
             //sucursal = sucursal.getJSONObject("data");
@@ -128,28 +129,31 @@ public class Modelo {
                 for (int j = 0; j < ingrediente.getJSONArray("modelo_ingrediente").length(); j++) {
                     JSONObject modelo_ingrediente = ingrediente.getJSONArray("modelo_ingrediente").getJSONObject(j);
                     JSONObject modelo = Modelo.getByKey(modelo_ingrediente.getString("key_modelo"));
-                    cantidad_ingrediente_solicitada += modelo_ingrediente.optDouble("cantidad",0);
+
+                    double cantidad_ingrediente = modelo_ingrediente.optDouble("cantidad",0) * cantidad_producir;
+
+                    cantidad_ingrediente_solicitada += cantidad_ingrediente;
                     System.out.println(" - "+modelo.optString("descripcion")+": "+modelo_ingrediente.optDouble("cantidad"));
                     double stock = getStock(modelo.getString("key"), key_sucursal);
                     System.out.println("Stock: "+stock);
 
-                    if(stock < ingrediente.optDouble("cantidad")){
+                    if(stock < cantidad_ingrediente){
                         failed.put(modelo);
                     }else{
-                        modelo.put("cantidad", ingrediente.optDouble("cantidad",0));
+                        modelo.put("cantidad", cantidad_ingrediente);
                         ingredienteOk.put(modelo);
                     }
                     
                 }
                 if(ingredientesReal.getJSONObject(key_ingrediente).optBoolean("is_required") == true){
-                    if(cantidad_ingrediente_solicitada < ingredientesReal.getJSONObject(key_ingrediente).optDouble("cantidad")){
+                    if(cantidad_ingrediente_solicitada < (ingredientesReal.getJSONObject(key_ingrediente).optDouble("cantidad")*cantidad_producir)){
                         obj.put("estado", "error");
                         obj.put("error", "Ingredientes incompletos para " + ingrediente.optString("descripcion"));
                         return;
                     }
                 }
 
-                if(cantidad_ingrediente_solicitada > ingredientesReal.getJSONObject(key_ingrediente).optDouble("cantidad")){
+                if(cantidad_ingrediente_solicitada > (ingredientesReal.getJSONObject(key_ingrediente).optDouble("cantidad")*cantidad_producir)){
                     obj.put("estado", "error");
                     obj.put("error", "Demasiados ingredientes para " + ingrediente.optString("descripcion"));
                     return;
@@ -168,19 +172,7 @@ public class Modelo {
             send.put("key_usuario", obj.getString("key_usuario"));
             send.put("key_almacen", key_almacen);
 
-            JSONObject producto = new JSONObject();
-            producto.put("key_usuario", obj.getString("key_usuario"));
-            producto.put("descripcion", modeloProducto.optString("descripcion"));
-            producto.put("observacion", modeloProducto.optString("observacion"));
-            producto.put("key_modelo", key_modelo);
-            producto.put("codigo", "XXXX");
-            producto.put("nombre", modeloProducto.optString("descripcion"));
-            producto.put("cantidad", 1);
-
-            send.put("data", producto);
-
-            Producto.registro(send, null);
-
+            double gasto=0;
             for (int i = 0; i < ingredienteOk.length(); i++) {
                 JSONObject modelo = ingredienteOk.getJSONObject(i);
                 JSONArray productos = getProductosInventario(conectInstance, modelo.getString("key"), key_sucursal);
@@ -191,6 +183,7 @@ public class Modelo {
                     // Realizar las operaciones necesarias con cada producto
                     if(cantidadCompra <= 0) break;
 
+                    gasto+=producto_.optDouble("precio_compra",0);
                     double descuento=0;
                     if(producto_.optDouble("cantidad",0) > cantidadCompra){
                         descuento = cantidadCompra;
@@ -209,6 +202,20 @@ public class Modelo {
                     SPGConect.insertObject("inventario_cardex", movimiento);
                 }
             }
+
+            JSONObject producto = new JSONObject();
+            producto.put("key_usuario", obj.getString("key_usuario"));
+            producto.put("descripcion", modeloProducto.optString("descripcion"));
+            producto.put("observacion", modeloProducto.optString("observacion"));
+            producto.put("key_modelo", key_modelo);
+            producto.put("codigo", "XXXX");
+            producto.put("nombre", modeloProducto.optString("descripcion"));
+            producto.put("cantidad", cantidad_producir);
+            producto.put("precio_compra", gasto);
+
+            send.put("data", producto);
+
+            Producto.registro(send, null);
 
             conectInstance.commit();
             obj.put("estado", "exito");
