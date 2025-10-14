@@ -368,7 +368,19 @@ public class Producto {
                     producto.getString("key_almacen"),
                     obj.getString("key_usuario"));
             conectInstance.insertObject("inventario_cardex", cardex);
-
+            JSONArray ingredientes = obj.getJSONArray("ingredientes");
+            if(ingredientes!=null)
+            for (int i = 0; i < ingredientes.length(); i++) {
+                JSONObject ingrediente = ingredientes.getJSONObject(i);
+                ingrediente.put("key", SUtil.uuid());
+                ingrediente.put("estado", 1);
+                ingrediente.put("fecha_on", SUtil.now());
+                ingrediente.put("key_usuario", obj.getString("key_usuario"));
+                ingrediente.put("key_modelo_ingrediente", ingrediente.getString("key"));
+                ingrediente.put("key_producto", ingrediente.getString("key_producto"));
+                ingrediente.put("cantidad", ingrediente.getString("cantidad"));
+                conectInstance.insertObject("producto_modelo_ingrediente", ingrediente);
+            }
 
             conectInstance.commit();
 
@@ -380,12 +392,58 @@ public class Producto {
             obj.put("estado", "error");
             obj.put("error", e.getMessage());
             e.printStackTrace();
+            obj=null;
             conectInstance.rollback();
         } finally {
             if (conectInstance != null) {
                 conectInstance.close();
             }
         }
+    }
+
+    public static void registro1(JSONObject obj, SPGConectInstance conectInstance) throws Exception {
+
+            JSONObject producto = obj.getJSONObject("data");
+
+            producto.put("key", SUtil.uuid());
+            producto.put("estado", 1);
+            producto.put("fecha_on", SUtil.now());
+            producto.put("key_usuario", obj.getString("key_usuario"));
+            if (obj.has("key_almacen")) {
+                producto.put("key_almacen", obj.getString("key_almacen"));
+            }
+
+            conectInstance.insertArray(COMPONENT, new JSONArray().put(producto));
+
+            JSONObject cardex = InventarioCardex.CrearMovimiento(
+                    producto.getString("key"),
+                    TipoMovimientoCardex.ingreso_produccion,
+                    producto.getDouble("cantidad"),
+                    producto.getString("key_almacen"),
+                    obj.getString("key_usuario"));
+            conectInstance.insertObject("inventario_cardex", cardex);
+            JSONArray ingredientes = obj.optJSONArray("ingredientes");
+            if(ingredientes!=null)
+            for (int i = 0; i < ingredientes.length(); i++) {
+                JSONObject ingrediente = ingredientes.getJSONObject(i);
+                JSONObject productoModelo = new JSONObject();
+                productoModelo.put("key", SUtil.uuid());
+                productoModelo.put("estado", 1);
+                productoModelo.put("fecha_on", SUtil.now());
+                productoModelo.put("key_usuario", obj.getString("key_usuario")); 
+                productoModelo.put("key_modelo", ingrediente.getString("key"));
+                productoModelo.put("key_producto", producto.getString("key"));
+                productoModelo.put("cantidad", ingrediente.getDouble("cantidad"));
+                conectInstance.insertObject("producto_modelo", productoModelo);
+            }
+
+            conectInstance.commit();
+
+            obj.put("data", producto);
+            obj.put("estado", "exito");
+            obj.put("sendAll", true);
+
+      
     }
 
     public static void registroExcel(JSONObject obj, SSSessionAbstract session) {
