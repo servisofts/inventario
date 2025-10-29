@@ -37,6 +37,8 @@ public class Manejador {
             case ConteoManualInventario.COMPONENT: ConteoManualInventario.onMessage(obj, session); break;
             case Proveedor.COMPONENT: Proveedor.onMessage(obj, session); break;
             case ModeloProveedor.COMPONENT: ModeloProveedor.onMessage(obj, session); break;
+            case ModeloTag.COMPONENT: ModeloTag.onMessage(obj, session); break;
+            case Tag.COMPONENT: Tag.onMessage(obj, session); break;
             case DB.COMPONENT: DB.onMessage(obj, session); break;
         }
     }
