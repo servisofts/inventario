@@ -355,6 +355,10 @@ public class Modelo {
                 }
             }
 
+            if(gasto <= 0){
+                gasto = modeloProducto.optDouble("precio_compra", 0);
+            }
+
             JSONObject producto = new JSONObject();
             producto.put("key_usuario", obj.getString("key_usuario"));
             producto.put("descripcion", modeloProducto.optString("descripcion"));
@@ -824,6 +828,10 @@ public class Modelo {
         }
     }
 
+    public void compraRecursiva(JSONObject producto, ConectInstance conectInstance){
+        
+    }
+
     public static void compraCaja(JSONObject obj, SSSessionAbstract session) {
         ConectInstance conectInstance = null;
         try {
@@ -871,10 +879,11 @@ public class Modelo {
                     // Hasta q ruddy vea venta
                     precio_unitario = (precio_unitario / (1 + (porc_iva / 100)));
                 }
-
+                
                 precio_unitario = (Math.round(precio_unitario * 100)) / 100.00;
                 JSONObject tipo_producto = TipoProducto.getByKey(modelo.getString("key_tipo_producto"));
                 compra_detalle.put("tipo_producto", tipo_producto);
+
                 JSONObject producto = new JSONObject();
                 producto.put("key", SUtil.uuid());
                 producto.put("estado", 1);
@@ -882,8 +891,7 @@ public class Modelo {
                 producto.put("key_usuario", data.getString("key_usuario"));
                 producto.put("key_modelo", compra_detalle.getString("key_modelo"));
                 producto.put("precio_compra", precio_unitario);
-                producto.put("nombre",
-                        modelo.getString("descripcion") + " - " + compra_detalle.optString("detalle", ""));
+                producto.put("nombre", modelo.getString("descripcion") + " - " + compra_detalle.optString("detalle", ""));
                 producto.put("key_empresa", compra_venta.getString("key_empresa"));
                 producto.put("key_compra_venta_detalle", compra_detalle.getString("key"));
 
@@ -896,6 +904,7 @@ public class Modelo {
                         cantidad,
                         almacen.getString("key"),
                         data.getString("key_usuario"));
+                        
                 conectInstance.insertObject("inventario_cardex", cardex);
 
                 producto.put("cardex", cardex);
