@@ -10,7 +10,8 @@ public enum TipoMovimientoCardex {
     devolucion_venta("Devolución de Venta"),
     devolucion_compra("Devolución de Compra"),
     perdida("Pérdida"),
-    baja("Baja");
+    baja("Baja"),
+    anulacion_venta("Anulación de Venta");
 
     private final String descripcion;
 

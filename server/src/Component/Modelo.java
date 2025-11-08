@@ -60,6 +60,9 @@ public class Modelo {
             case "ventaCaja":
                 ventaCaja(obj, session);
                 break;
+            case "anularVenta":
+                anularVenta(obj, session);
+                break;
             case "compraRapida":
                 compraRapida(obj, session);
                 break;
@@ -924,6 +927,111 @@ public class Modelo {
             obj.put("data", response.getJSONObject("data"));
             obj.put("estado", "exito");
             conectInstance.commit();
+        } catch (Exception e) {
+            obj.put("estado", "error");
+            obj.put("error", e.getMessage());
+            e.printStackTrace();
+            conectInstance.rollback();
+        } finally {
+            if (conectInstance != null) {
+                conectInstance.close();
+            }
+        }
+    }
+
+    public static void anularVenta(JSONObject obj, SSSessionAbstract session) {
+        ConectInstance conectInstance = null;
+        try {
+            conectInstance = new ConectInstance();
+            conectInstance.Transacction();
+            //JSONObject data = obj.getJSONObject("data");
+            //JSONObject venta = obj.getJSONObject("data").getJSONObject("compra_venta");
+            //String key_sucursal = venta.getString("key_sucursal");
+            
+
+            obj.put("component", "asiento_contable");
+
+            JSONObject compraVenta = obj.optJSONObject("compra_venta");
+
+            String key_compra_venta = obj.optJSONObject("compra_venta").optString("key");
+
+            JSONObject cardex = SPGConect.ejecutarConsultaObject("""
+                select jsonb_object_agg(inventario_cardex.key, to_json(inventario_cardex.*))::json as json 
+                from inventario_cardex
+                where inventario_cardex.estado > 0
+                and inventario_cardex.data ->> 'key_compra_venta' = '%s'
+            """.formatted(key_compra_venta));
+            JSONArray inventario = new JSONArray();
+            for (String key : cardex.keySet()) {
+                JSONObject item = cardex.optJSONObject(key);
+                if(item == null) continue;
+
+                double cantidad =  item.optDouble("cantidad") * -1;
+
+                JSONObject movimiento = InventarioCardex.CrearMovimiento(
+                        item.getString("key_producto"),
+                        TipoMovimientoCardex.anulacion_venta,
+                        cantidad,
+                        item.optString("key_almacen"),
+                        obj.getString("key_usuario")
+                );
+                conectInstance.insertObject("inventario_cardex", movimiento);
+                
+                JSONObject producto = Producto.getByKey(item.getString("key_producto"));
+                item.put("producto", producto);
+                JSONObject modelo = Modelo.getByKey(producto.getString("key_modelo"));
+                item.put("modelo", modelo);
+                JSONObject tipo_producto = TipoProducto.getByKey(modelo.getString("key_tipo_producto"));
+                item.put("tipo_producto", tipo_producto);
+
+                double precio_venta = item.optJSONObject("data").optDouble("precio_unitario_venta", 0);
+                double precio_compra = producto.optDouble("precio_compra", 0);
+
+                JSONObject obs3 = new JSONObject();
+                obs3.put("key_cuenta_contable", tipo_producto.getString("key_cuenta_contable_ganancia"));
+                obs3.put("tipo", "debe");
+                obs3.put("glosa", "Anulando ganancia de venta modelo: " + modelo.getString("descripcion"));
+                obs3.put("monto", precio_venta * cantidad);
+                obs3.put("facturar", compraVenta.optBoolean("facturar", false) );
+                obs3.put("monto_me", 0);
+
+                inventario.put(obs3);
+
+                JSONObject obs1 = new JSONObject();
+                obs1.put("key_cuenta_contable", tipo_producto.getString("key_cuenta_contable_costo"));
+                obs1.put("tipo", "haber");
+                obs1.put("glosa", "Anulando costo de venta modelo: " + modelo.getString("descripcion"));
+                obs1.put("monto", precio_compra * cantidad);
+                obs1.put("monto_me", 0);
+
+                inventario.put(obs1);
+
+                JSONObject obs = new JSONObject();
+                obs.put("key_cuenta_contable", tipo_producto.getString("key_cuenta_contable"));
+                obs.put("tipo", "debe");
+                obs.put("glosa", "Anulando inventario de venta modelo: " + modelo.getString("descripcion"));
+                obs.put("monto", precio_compra * cantidad);
+                obs.put("monto_me", 0);
+                inventario.put(obs);
+
+                
+
+            }
+
+
+            obj.put("asiento_inventario", inventario);
+            //send.put("key_compra_venta", key_compra_venta);
+            //send.put("empresa_tipo_pago", empresaTipoPago );
+
+            JSONObject data = SocketCliente.sendSinc("contabilidad", obj);
+            if (!data.optString("estado").equals("exito")) {
+                throw new Exception(data.optString("error", "Error al anular la venta en contabilidad"));
+            }
+            
+            conectInstance.commit();
+
+            obj.put("estado", "exito");
+
         } catch (Exception e) {
             obj.put("estado", "error");
             obj.put("error", e.getMessage());
