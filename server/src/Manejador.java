@@ -23,6 +23,7 @@ public class Manejador {
             case TIpoProductoInventarioDato.COMPONENT: TIpoProductoInventarioDato.onMessage(obj, session); break;
             case ProductoInventarioDato.COMPONENT: ProductoInventarioDato.onMessage(obj, session); break;
             case TipoProducto.COMPONENT: TipoProducto.onMessage(obj, session); break;
+            case TipoCosto.COMPONENT: TipoCosto.onMessage(obj, session); break;
             case ProductoHistorico.COMPONENT: ProductoHistorico.onMessage(obj, session); break;
             case ProductoEntrega.COMPONENT: ProductoEntrega.onMessage(obj, session); break;
             case ProductoIngrediente.COMPONENT: ProductoIngrediente.onMessage(obj, session); break;
