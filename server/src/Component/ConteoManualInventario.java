@@ -152,7 +152,7 @@ public class ConteoManualInventario {
         }
     }
 
-    public static void aplicar_cardex(JSONObject obj, SSSessionAbstract session) {
+    public static void aplicar_cardex_backUp(JSONObject obj, SSSessionAbstract session) {
         ConectInstance conectInstance = null;
         try {
             conectInstance = new ConectInstance();
@@ -335,4 +335,152 @@ public class ConteoManualInventario {
         }
     }
 
+    public static void aplicar_cardex(JSONObject obj, SSSessionAbstract session) {
+        ConectInstance conectInstance = null;
+        try {
+            conectInstance = new ConectInstance();
+            conectInstance.Transacction();
+            String key_conteo = obj.getString("key_conteo");
+            String consulta = """
+                        SELECT array_to_json(array_agg(sq1.*)) as json
+                        FROM(
+                            SELECT
+                                sq1.key_almacen,
+                                sq1.key_modelo,
+                                sq1.cantidad_real AS cantidad_declarada,
+                                sq1.stock AS cantidad_en_stock,
+                                sq1.cantidad_baja,
+                                CASE WHEN sq1.cantidad_baja > 0 THEN 0 ELSE GREATEST(0, sq1.stock - sq1.cantidad_real) END AS cantidad_perdida,
+                                CASE WHEN (sq1.cantidad_real + sq1.cantidad_baja - sq1.stock) > 0 THEN (sq1.cantidad_real + sq1.cantidad_baja - sq1.stock) ELSE 0 END AS cantidad_ganancia
+                            FROM(
+                                SELECT
+                                    detalle.*,
+                                    detalle.stock - detalle.cantidad_real as cantidad_perdida,
+                                    (detalle.cantidad_real + detalle.cantidad_baja) - detalle.stock as cantidad_ganancia
+                                FROM (
+                                    SELECT
+                                        inv.key_almacen,
+                                        detalle->>'key_modelo' as key_modelo,
+                                        coalesce((detalle->>'stock')::float,0) as stock,
+                                        coalesce((detalle->>'cantidad_real')::float,0) as cantidad_real,
+                                        coalesce((detalle->>'cantidad_baja')::float,0) as cantidad_baja
+                                    FROM conteo_manual_inventario inv
+                                    LEFT JOIN LATERAL jsonb_array_elements(inv.data::jsonb) AS detalle ON true
+                                    WHERE inv.key = '%s'
+                                    AND inv.estado > 0
+                                ) detalle
+                            ) sq1
+                        ) sq1
+                    """
+                    .formatted(key_conteo);
+
+            String key_empresa = SPGConect.ejecutarConsultaString("""
+                        SELECT almacen.key_empresa
+                        FROM conteo_manual_inventario
+                        JOIN almacen ON conteo_manual_inventario.key_almacen = almacen.key
+                        WHERE conteo_manual_inventario.key = '%s'
+                    """.formatted(key_conteo));
+
+            String cuenta_perdida = ContaHook .getAjusteEmpresa(key_empresa, "inventario_perdida_por_merma") .optString("key");
+            String cuenta_ganancia = ContaHook .getAjusteEmpresa(key_empresa, "inventario_ganancia_por_exceso") .optString("key");
+
+            AsientoContable asiento = new AsientoContable(AsientoContableTipo.egreso);
+            asiento.descripcion = "Aplicación de conteo manual de inventario";
+            asiento.observacion = "Aplicación de conteo manual de inventario";
+            asiento.key_empresa = key_empresa;
+            asiento.key_usuario = obj.getString("key_usuario");
+            boolean tieneDetalle = false;
+            JSONArray arr = conectInstance.ejecutarConsultaArray(consulta);
+            JSONObject tags = new JSONObject();
+
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject item = arr.getJSONObject(i);
+                String key_almacen = item.getString("key_almacen");
+                String key_modelo = item.getString("key_modelo");
+                double cantidad_baja = item.getDouble("cantidad_baja");
+                double cantidad_perdida = item.getDouble("cantidad_perdida");
+                double cantidad_ganancia = item.getDouble("cantidad_ganancia");
+                System.out.println("---- ITEM " + i + " ----");
+                System.out.println("key_almacen: " + key_almacen);
+                System.out.println("key_modelo: " + key_modelo);
+                System.out.println("cantidad_baja: " + cantidad_baja);
+                System.out.println("cantidad_perdida: " + cantidad_perdida);
+                System.out.println("cantidad_ganancia: " + cantidad_ganancia);
+                tags.put("key_modelo", key_modelo);
+                tags.put("key_almacen", key_almacen);
+                String cuenta_inventario = conectInstance.ejecutarConsultaString("""
+                            SELECT tipo_producto.key_cuenta_contable
+                            FROM modelo
+                            JOIN tipo_producto ON modelo.key_tipo_producto = tipo_producto.key
+                            WHERE modelo.key = '%s'
+                        """.formatted(key_modelo));
+
+                // ---------- BAJA ----------
+                if (cantidad_baja > 0) {
+                    System.out.println("-----------------------------------------> entro bajas");
+                    JSONArray mov = conectInstance.ejecutarConsultaArray("select retirar_productos_por_modelo_almacen('" + key_modelo + "','" + key_almacen + "'," + cantidad_baja + ",'','" + TipoMovimientoCardex.baja.name() + "','" + key_conteo + "','{}') as json");
+                    double monto = 0;
+                    for (int j = 0; j < mov.length(); j++) {
+                        JSONObject m = mov.getJSONObject(j);
+                        monto += m.optDouble("precio_compra", 0) * (-m.optDouble("cantidad", 0));
+                    }
+                    if (monto > 0) {
+                        asiento.setDetalle(new AsientoContableDetalle(cuenta_perdida, "Pérdida por Baja", "debe", monto, monto, tags));
+                        asiento.setDetalle(new AsientoContableDetalle(cuenta_inventario, "Inventario", "haber", monto, monto, tags));
+                        tieneDetalle = true;
+                    }
+                }
+                // ---------- PÉRDIDA ----------
+                if (cantidad_perdida > 0 && cantidad_baja == 0) {
+                    System.out.println("-----------------------------------------> entro perdidas");
+                    JSONArray mov = conectInstance.ejecutarConsultaArray("select retirar_productos_por_modelo_almacen('" + key_modelo + "','" + key_almacen + "'," + cantidad_perdida + ",'','" + TipoMovimientoCardex.perdida.name() + "','" + key_conteo + "','{}') as json");
+                    double monto = 0;
+                    for (int j = 0; j < mov.length(); j++) {
+                        JSONObject m = mov.getJSONObject(j);
+                        monto += m.optDouble("precio_compra", 0) * (-m.optDouble("cantidad", 0));
+                    }
+
+                    if (monto > 0) {
+                        asiento.setDetalle(new AsientoContableDetalle(cuenta_perdida, "Pérdida por Merma", "debe", monto, monto, tags));
+                        asiento.setDetalle(new AsientoContableDetalle(cuenta_inventario, "Inventario", "haber", monto, monto, tags));
+                        tieneDetalle = true;
+                    }
+                }
+
+                // ---------- GANANCIA / EXCEDENTE ----------
+                if (cantidad_ganancia > 0) {
+                    System.out.println("-----------------------------------------> entro excende");
+                    JSONArray mov = conectInstance.ejecutarConsultaArray("select agregar_productos_por_modelo_almacen('" + key_modelo + "','" + key_almacen + "'," + cantidad_ganancia + ",'','" + TipoMovimientoCardex.excedente.name() + "','" + key_conteo + "','{}') as json");
+                    double monto = 0;
+                    for (int j = 0; j < mov.length(); j++) {
+                        JSONObject m = mov.getJSONObject(j);
+                        monto += m.optDouble("precio_compra", 0) * m.optDouble("cantidad", 0);
+                    }
+                    if (monto > 0) {
+                        asiento.setDetalle(new AsientoContableDetalle(cuenta_inventario, "Inventario", "debe", monto, monto, tags));
+                        asiento.setDetalle(new AsientoContableDetalle(cuenta_ganancia, "Ganancia por Exceso", "haber", monto, monto, tags));
+                        tieneDetalle = false;
+                    }
+                }
+            }
+            conectInstance.ejecutarUpdate(
+                    "UPDATE conteo_manual_inventario SET fecha_confirmacion = now() WHERE key = '" + key_conteo + "'");
+            if (tieneDetalle) {
+                asiento.enviar();
+            }
+            obj.put("estado", "exito");
+            conectInstance.commit();
+        } catch (Exception e) {
+            obj.put("estado", "error");
+            obj.put("error", e.getMessage());
+            if (conectInstance != null)
+                conectInstance.rollback();
+            e.printStackTrace();
+        } finally {
+            if (conectInstance != null)
+                conectInstance.close();
+        }
+    }
+
+    
 }
