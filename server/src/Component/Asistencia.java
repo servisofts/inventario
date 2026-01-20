@@ -6,8 +6,8 @@ import Servisofts.SPGConect;
 import Servisofts.SUtil;
 import Servisofts.Server.SSSAbstract.SSSessionAbstract;
 
-public class Suscripcion {
-    public static final String COMPONENT = "suscripcion";
+public class Asistencia {
+    public static final String COMPONENT = "asistencia";
 
     public static void onMessage(JSONObject obj, SSSessionAbstract session) {
         String type = obj.getString("type");
@@ -24,21 +24,18 @@ public class Suscripcion {
             case "editar":
                 editar(obj, session);
                 break;
-            case "getByKeyCompraVentaDetalle":
-                getByKeyCompraVentaDetalle(obj, session);
-                break;
-
-            case "getByKeyCliente":
-                getByKeyCliente(obj, session);
-                break;
         }
     }
 
     public static void getAll(JSONObject obj, SSSessionAbstract session) {
         try {
-            String consulta = "select get_all('" + COMPONENT + "') as json";
-            JSONObject data = SPGConect.ejecutarConsultaObject(consulta);
+            String consulta = "select get_asistencias('" + obj.getString("key_empresa") + "') as json";
+            String jsonString = SPGConect.ejecutarConsultaString(consulta);
+            JSONArray data = new JSONArray(jsonString);
+            System.out.println("--------------");
             obj.put("data", data);
+            System.out.println(data);
+            System.out.println("--------------");
             obj.put("estado", "exito");
         } catch (Exception e) {
             obj.put("estado", "error");
@@ -51,33 +48,6 @@ public class Suscripcion {
         try {
             String consulta = "select get_by_key('" + COMPONENT + "', '" + obj.getString("key") + "') as json";
             JSONObject data = SPGConect.ejecutarConsultaObject(consulta);
-            obj.put("data", data);
-            obj.put("estado", "exito");
-        } catch (Exception e) {
-            obj.put("estado", "error");
-            obj.put("error", e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    public static void getByKeyCompraVentaDetalle(JSONObject obj, SSSessionAbstract session) {
-        try {
-            String consulta = "select get_by_key_compra_venta_detalle('" + obj.getString("key_compra_venta_detalle") + "') as json";
-            JSONObject data = SPGConect.ejecutarConsultaObject(consulta);
-            obj.put("data", data);
-            obj.put("estado", "exito");
-        } catch (Exception e) {
-            obj.put("estado", "error");
-            obj.put("error", e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    public static void getByKeyCliente(JSONObject obj, SSSessionAbstract session) {
-        try {
-            String consulta = "select _get_suscripciones_bycliente('" + obj.getString("key_cliente") + "') as json";
-            String jsonString = SPGConect.ejecutarConsultaString(consulta);
-            JSONArray data = new JSONArray(jsonString);
             obj.put("data", data);
             obj.put("estado", "exito");
         } catch (Exception e) {
@@ -118,5 +88,4 @@ public class Suscripcion {
             e.printStackTrace();
         }
     }
-
 }

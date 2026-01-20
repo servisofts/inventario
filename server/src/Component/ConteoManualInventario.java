@@ -43,11 +43,16 @@ public class ConteoManualInventario {
         }
     }
 
+    // Alvaro 15/01/2026
     public static void getAll_reporte_conteo_inventario_detallado(JSONObject obj,
             SSSessionAbstract session) {
         try {
             String consulta = "select _reporte_conteo_inventario_json('"
-                    + obj.getString("key_empresa") + "') as json";
+                    + obj.getString("key_empresa") + "','" + obj.getString("fecha_inicio") + "','"
+                    + obj.getString("fecha_fin") + "') as json";
+            System.out.println("mostrando");
+            System.out.println("--------------------------------------------");
+            System.out.println(consulta);
             obj.put("data", SPGConect.ejecutarConsultaArray(consulta));
             obj.put("estado", "exito");
         } catch (Exception e) {
@@ -251,20 +256,20 @@ public class ConteoManualInventario {
                         }
 
                         asiento.setDetalle(new AsientoContableDetalle(
-                            key_cuenta_contable_inventario_perdida_por_merma,
-                            "Cuenta de Pérdida por Baja", 
-                            "debe", 
-                            monto_baja,
-                            monto_baja,
-                            tags));
-                        
+                                key_cuenta_contable_inventario_perdida_por_merma,
+                                "Cuenta de Pérdida por Baja",
+                                "debe",
+                                monto_baja,
+                                monto_baja,
+                                tags));
+
                         asiento.setDetalle(new AsientoContableDetalle(
-                            key_cuenta_contable_inventario,
-                            "Cuenta de Inventario", 
-                            "haber", 
-                            monto_baja,
-                            monto_baja,
-                            tags));
+                                key_cuenta_contable_inventario,
+                                "Cuenta de Inventario",
+                                "haber",
+                                monto_baja,
+                                monto_baja,
+                                tags));
 
                         System.out.println("Registrar baja: " + cantidad_baja + " del modelo: " + key_modelo
                                 + " en el almacén: " + key_almacen);
@@ -285,21 +290,20 @@ public class ConteoManualInventario {
 
                         }
                         asiento.setDetalle(new AsientoContableDetalle(
-                            key_cuenta_contable_inventario_perdida_por_merma,
-                            "Cuenta de Pérdida por merma", 
-                            "debe", 
-                            monto_baja,
-                            monto_baja,
-                            tags));
+                                key_cuenta_contable_inventario_perdida_por_merma,
+                                "Cuenta de Pérdida por merma",
+                                "debe",
+                                monto_baja,
+                                monto_baja,
+                                tags));
 
                         asiento.setDetalle(new AsientoContableDetalle(
-                            key_cuenta_contable_inventario,
-                            "Cuenta de Inventario", 
-                            "haber", 
-                            monto_baja,
-                            monto_baja,
-                            tags));
-                       
+                                key_cuenta_contable_inventario,
+                                "Cuenta de Inventario",
+                                "haber",
+                                monto_baja,
+                                monto_baja,
+                                tags));
 
                         System.out.println("Registrar pérdida: " + cantidad_perdida + " del modelo: " + key_modelo
                                 + " en el almacén: " + key_almacen);
@@ -381,8 +385,10 @@ public class ConteoManualInventario {
                         WHERE conteo_manual_inventario.key = '%s'
                     """.formatted(key_conteo));
 
-            String cuenta_perdida = ContaHook .getAjusteEmpresa(key_empresa, "inventario_perdida_por_merma") .optString("key");
-            String cuenta_ganancia = ContaHook .getAjusteEmpresa(key_empresa, "inventario_ganancia_por_exceso") .optString("key");
+            String cuenta_perdida = ContaHook.getAjusteEmpresa(key_empresa, "inventario_perdida_por_merma")
+                    .optString("key");
+            String cuenta_ganancia = ContaHook.getAjusteEmpresa(key_empresa, "inventario_ganancia_por_exceso")
+                    .optString("key");
 
             AsientoContable asiento = new AsientoContable(AsientoContableTipo.egreso);
             asiento.descripcion = "Aplicación de conteo manual de inventario";
@@ -418,22 +424,28 @@ public class ConteoManualInventario {
                 // ---------- BAJA ----------
                 if (cantidad_baja > 0) {
                     System.out.println("-----------------------------------------> entro bajas");
-                    JSONArray mov = conectInstance.ejecutarConsultaArray("select retirar_productos_por_modelo_almacen('" + key_modelo + "','" + key_almacen + "'," + cantidad_baja + ",'','" + TipoMovimientoCardex.baja.name() + "','" + key_conteo + "','{}') as json");
+                    JSONArray mov = conectInstance.ejecutarConsultaArray("select retirar_productos_por_modelo_almacen('"
+                            + key_modelo + "','" + key_almacen + "'," + cantidad_baja + ",'','"
+                            + TipoMovimientoCardex.baja.name() + "','" + key_conteo + "','{}') as json");
                     double monto = 0;
                     for (int j = 0; j < mov.length(); j++) {
                         JSONObject m = mov.getJSONObject(j);
                         monto += m.optDouble("precio_compra", 0) * (-m.optDouble("cantidad", 0));
                     }
                     if (monto > 0) {
-                        asiento.setDetalle(new AsientoContableDetalle(cuenta_perdida, "Pérdida por Baja", "debe", monto, monto, tags));
-                        asiento.setDetalle(new AsientoContableDetalle(cuenta_inventario, "Inventario", "haber", monto, monto, tags));
+                        asiento.setDetalle(new AsientoContableDetalle(cuenta_perdida, "Pérdida por Baja", "debe", monto,
+                                monto, tags));
+                        asiento.setDetalle(new AsientoContableDetalle(cuenta_inventario, "Inventario", "haber", monto,
+                                monto, tags));
                         tieneDetalle = true;
                     }
                 }
                 // ---------- PÉRDIDA ----------
                 if (cantidad_perdida > 0 && cantidad_baja == 0) {
                     System.out.println("-----------------------------------------> entro perdidas");
-                    JSONArray mov = conectInstance.ejecutarConsultaArray("select retirar_productos_por_modelo_almacen('" + key_modelo + "','" + key_almacen + "'," + cantidad_perdida + ",'','" + TipoMovimientoCardex.perdida.name() + "','" + key_conteo + "','{}') as json");
+                    JSONArray mov = conectInstance.ejecutarConsultaArray("select retirar_productos_por_modelo_almacen('"
+                            + key_modelo + "','" + key_almacen + "'," + cantidad_perdida + ",'','"
+                            + TipoMovimientoCardex.perdida.name() + "','" + key_conteo + "','{}') as json");
                     double monto = 0;
                     for (int j = 0; j < mov.length(); j++) {
                         JSONObject m = mov.getJSONObject(j);
@@ -441,8 +453,10 @@ public class ConteoManualInventario {
                     }
 
                     if (monto > 0) {
-                        asiento.setDetalle(new AsientoContableDetalle(cuenta_perdida, "Pérdida por Merma", "debe", monto, monto, tags));
-                        asiento.setDetalle(new AsientoContableDetalle(cuenta_inventario, "Inventario", "haber", monto, monto, tags));
+                        asiento.setDetalle(new AsientoContableDetalle(cuenta_perdida, "Pérdida por Merma", "debe",
+                                monto, monto, tags));
+                        asiento.setDetalle(new AsientoContableDetalle(cuenta_inventario, "Inventario", "haber", monto,
+                                monto, tags));
                         tieneDetalle = true;
                     }
                 }
@@ -450,15 +464,19 @@ public class ConteoManualInventario {
                 // ---------- GANANCIA / EXCEDENTE ----------
                 if (cantidad_ganancia > 0) {
                     System.out.println("-----------------------------------------> entro excende");
-                    JSONArray mov = conectInstance.ejecutarConsultaArray("select agregar_productos_por_modelo_almacen('" + key_modelo + "','" + key_almacen + "'," + cantidad_ganancia + ",'','" + TipoMovimientoCardex.excedente.name() + "','" + key_conteo + "','{}') as json");
+                    JSONArray mov = conectInstance.ejecutarConsultaArray("select agregar_productos_por_modelo_almacen('"
+                            + key_modelo + "','" + key_almacen + "'," + cantidad_ganancia + ",'','"
+                            + TipoMovimientoCardex.excedente.name() + "','" + key_conteo + "','{}') as json");
                     double monto = 0;
                     for (int j = 0; j < mov.length(); j++) {
                         JSONObject m = mov.getJSONObject(j);
                         monto += m.optDouble("precio_compra", 0) * m.optDouble("cantidad", 0);
                     }
                     if (monto > 0) {
-                        asiento.setDetalle(new AsientoContableDetalle(cuenta_inventario, "Inventario", "debe", monto, monto, tags));
-                        asiento.setDetalle(new AsientoContableDetalle(cuenta_ganancia, "Ganancia por Exceso", "haber", monto, monto, tags));
+                        asiento.setDetalle(new AsientoContableDetalle(cuenta_inventario, "Inventario", "debe", monto,
+                                monto, tags));
+                        asiento.setDetalle(new AsientoContableDetalle(cuenta_ganancia, "Ganancia por Exceso", "haber",
+                                monto, monto, tags));
                         tieneDetalle = false;
                     }
                 }
@@ -482,5 +500,4 @@ public class ConteoManualInventario {
         }
     }
 
-    
 }

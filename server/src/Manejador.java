@@ -42,6 +42,7 @@ public class Manejador {
             case ModeloTag.COMPONENT: ModeloTag.onMessage(obj, session); break;
             case Tag.COMPONENT: Tag.onMessage(obj, session); break;
             case Suscripcion.COMPONENT: Suscripcion.onMessage(obj, session); break;
+            case Asistencia.COMPONENT: Asistencia.onMessage(obj, session); break;
             case DB.COMPONENT: DB.onMessage(obj, session); break;
             case Reporte.COMPONENT: Reporte.onMessage(obj, session); break;
         }
