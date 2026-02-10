@@ -1057,8 +1057,8 @@ public class Modelo {
                 JSONObject compra_detalle = detalle.getJSONObject(i);
 
                 if (!compra_detalle.has("key_modelo") || !compra_detalle.has("cantidad")
-                        || !compra_detalle.has("precio_unitario")) {
-                    throw new Exception("El item debe tener key_modelo, cantidad y precio_unitario");
+                        || !compra_detalle.has("precio_unitario_base")) {
+                    throw new Exception("El item debe tener key_modelo, cantidad y precio_unitario_base");
                 }
 
                 JSONObject modelo = Modelo.getByKey(compra_detalle.getString("key_modelo"));
@@ -1068,7 +1068,7 @@ public class Modelo {
                 }
 
                 double cantidad = compra_detalle.getDouble("cantidad");
-                double precio_unitario = compra_detalle.getDouble("precio_unitario");
+                double precio_unitario = compra_detalle.getDouble("precio_unitario_base");
                 double descuento = compra_detalle.optDouble("descuento", 0);
                 JSONObject tipo_producto = TipoProducto.getByKey(modelo.getString("key_tipo_producto"));
                 compra_detalle.put("tipo_producto", tipo_producto);
