@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Registrar Modelo</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; }
+        label { display: block; margin-top: 15px; font-weight: bold; }
+        input, textarea { width: 100%; padding: 8px; margin-top: 5px; }
+        button { margin-top: 20px; padding: 10px 15px; font-size: 16px; cursor: pointer; }
+        .resultado { margin-top: 20px; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+
+    <h1>Registrar Modelo</h1>
+    <form id="modeloForm">
+
+        <label for="key_marca">Key Marca</label>
+        <input type="text" id="key_marca" name="key_marca" value="9329ba86-0d15-4700-b19a-df879f59c78e" required />
+
+        <label for="precio_venta_moneda">Precio Venta Moneda</label>
+        <input type="text" id="precio_venta_moneda" name="precio_venta_moneda" value="" />
+
+        <label for="precio_compra_moneda">Precio Compra Moneda</label>
+        <input type="text" id="precio_compra_moneda" name="precio_compra_moneda" value="" />
+
+        <label for="key_tipo_producto">Key Tipo Producto</label>
+        <input type="text" id="key_tipo_producto" name="key_tipo_producto" value="5e9254f3-5e3b-4379-928d-db593a6e677e" required />
+
+        <label for="descripcion">Descripción</label>
+        <textarea id="descripcion" name="descripcion" rows="2">aleluya 300</textarea>
+
+        <label for="observacion">Observación</label>
+        <textarea id="observacion" name="observacion" rows="2"></textarea>
+
+        <label for="barcode">Barcode</label>
+        <input type="text" id="barcode" name="barcode" value="123456789" />
+
+        <label for="precio_compra">Precio Compra</label>
+        <input type="number" step="0.01" id="precio_compra" name="precio_compra" value="11.11" />
+
+        <label for="precio_venta">Precio Venta</label>
+        <input type="number" step="0.01" id="precio_venta" name="precio_venta" value="" />
+
+        <label for="duracion">Duración</label>
+        <input type="number" id="duracion" name="duracion" value="" />
+
+        <label for="duracion_medida">Duración Medida</label>
+        <input type="text" id="duracion_medida" name="duracion_medida" value="" />
+
+        <label for="cantidad_suscriptores">Cantidad Suscriptores</label>
+        <input type="number" id="cantidad_suscriptores" name="cantidad_suscriptores" value="" />
+
+        <label for="codigo_ref">Código Ref</label>
+        <input type="text" id="codigo_ref" name="codigo_ref" value="" />
+
+        <button type="submit">Enviar</button>
+
+    </form>
+
+    <div class="resultado" id="resultado"></div>
+
+    <script>
+        document.getElementById('modeloForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const data = {
+                key_marca: document.getElementById('key_marca').value,
+                precio_venta_moneda: document.getElementById('precio_venta_moneda').value,
+                precio_compra_moneda: document.getElementById('precio_compra_moneda').value,
+                key_tipo_producto: document.getElementById('key_tipo_producto').value,
+                descripcion: document.getElementById('descripcion').value || null,
+                observacion: document.getElementById('observacion').value || null,
+                barcode: document.getElementById('barcode').value,
+                precio_compra: parseFloat(document.getElementById('precio_compra').value) || null,
+                precio_venta: parseFloat(document.getElementById('precio_venta').value) || null,
+                duracion: parseInt(document.getElementById('duracion').value) || null,
+                duracion_medida: document.getElementById('duracion_medida').value,
+                cantidad_suscriptores: parseInt(document.getElementById('cantidad_suscriptores').value) || null,
+                codigo_ref: document.getElementById('codigo_ref').value
+            };
+
+            fetch('http://localhost:30039/rest/alvaro/registrar_modelo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(res => {
+                document.getElementById('resultado').innerText = JSON.stringify(res, null, 2);
+            })
+            .catch(err => {
+                document.getElementById('resultado').innerText = 'Error: ' + err.message;
+            });
+        });
+    </script>
+
+</body>
+</html>

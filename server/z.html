@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Registrar Modelo - Solo Descripción</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 400px; margin: 30px auto; }
+        label { display: block; margin-top: 15px; font-weight: bold; }
+        input { width: 100%; padding: 8px; margin-top: 5px; }
+        button { margin-top: 20px; padding: 10px 15px; font-size: 16px; cursor: pointer; }
+        .resultado { margin-top: 20px; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+
+    <h1>Registrar Modelo</h1>
+    <form id="modeloForm">
+
+        <label for="descripcion">Descripción</label>
+        <input type="text" id="descripcion" name="descripcion" required />
+
+        <button type="submit">Enviar</button>
+
+    </form>
+
+    <div class="resultado" id="resultado"></div>
+
+    <script>
+        document.getElementById('modeloForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const descripcion = document.getElementById('descripcion').value;
+
+            const data = {
+                key_marca: "9329ba86-0d15-4700-b19a-df879f59c78e",
+                precio_venta_moneda: "",
+                precio_compra_moneda: "",
+                key_tipo_producto: "5e9254f3-5e3b-4379-928d-db593a6e677e",
+                descripcion: descripcion,
+                observacion: null,
+                barcode: "123456789",
+                precio_compra: 11.11,
+                precio_venta: null,
+                duracion: null,
+                duracion_medida: "",
+                cantidad_suscriptores: null,
+                codigo_ref: ""
+            };
+
+            fetch('http://localhost:30039/rest/alvaro/registrar_modelo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(res => {
+                document.getElementById('resultado').innerText = JSON.stringify(res, null, 2);
+            })
+            .catch(err => {
+                document.getElementById('resultado').innerText = 'Error: ' + err.message;
+            });
+        });
+    </script>
+
+</body>
+</html>
