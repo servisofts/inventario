@@ -6,8 +6,8 @@ import Component.Modelo;
 import Servisofts.http.Exception.HttpException;
 
 @RestController
-@RequestMapping("/alvaro")
-public class AlvaroController {
+@RequestMapping("/modelo")
+public class ModeloController {
 
     @GetMapping("/status")
     public String status() {
@@ -43,34 +43,8 @@ public class AlvaroController {
         }
     }
 
-    // @PutMapping("/status")
-    // public String statusPut(@RequestBody(required = false) String body) {
-    //     try {
-    //         JSONObject obj = new JSONObject();
-
-    //         // Si envías algo en el body, podemos mostrarlo
-    //         if (body != null && !body.isEmpty()) {
-    //             JSONObject data = new JSONObject(body);
-    //             obj.put("datos_actualizados", data);
-    //         }
-
-    //         obj.put("controller", "alvaro");
-    //         obj.put("metodo", "PUT");
-    //         obj.put("estado", "exito ✅");
-    //         obj.put("mensaje", "Estado actualizado correctamente");
-
-    //         return obj.toString();
-
-    //     } catch (Exception e) {
-    //         JSONObject error = new JSONObject();
-    //         error.put("estado", "error ❌");
-    //         error.put("mensaje", e.getMessage());
-    //         return error.toString();
-    //     }
-    // }
-
-    @PostMapping("/registrar_modelo")
-    public String registrar_modelo(@RequestBody String body) throws HttpException {
+    @PostMapping("/registrar")
+    public String registrar(@RequestBody String body) throws HttpException {
         try {
             JSONObject data = new JSONObject(body);
             JSONObject obj = new JSONObject();
@@ -89,8 +63,8 @@ public class AlvaroController {
         }
     }
 
-    @PostMapping("/editar_modelo")
-    public String editar_modelo(@RequestBody String body) {
+    @PostMapping("/editar")
+    public String editar(@RequestBody String body) {
 
         try {
             JSONObject data = new JSONObject(body);
@@ -113,8 +87,8 @@ public class AlvaroController {
         }
     }
 
-    @PostMapping("/eliminar_modelo")
-    public String eliminar_modelo(@RequestBody String body) {
+    @PostMapping("/eliminar")
+    public String eliminar(@RequestBody String body) {
 
         try {
             JSONObject data = new JSONObject(body);

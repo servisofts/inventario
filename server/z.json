@@ -1,0 +1,50 @@
+{
+    "descripcion": "",
+    "observacion": "Observación",
+    "facturar": false,
+    "facturar_luego": false,
+    "cliente": {
+        "nit": "",
+        "razon_social": ""
+    },
+    "descuentos": [],
+    "key_usuario": "1e4b2e09-94f1-4f9e-9d58-80d4d2f9ab3b",
+    "key_caja": "b8d3e10a-9442-4c4e-be75-45842bc5ae4b",
+    "key_almacen": "0f8fb5f0-c4c1-4e98-ad8d-dcdbfba65258",
+    "key_moneda": "2f6b73df-8004-41c1-aa5f-1a81d79d1a8f",
+    "detalle": [
+        {
+            "cantidad": 1,
+            "precio_unitario": 6,
+            "precio_unitario_base": "60",
+            "detalle": "",
+            "descripcion": "Leche Pil 1 Litro",
+            "key_modelo": "0298d0bc-6f51-40ee-9fb5-ad0c1370f932",
+            "costos": []
+        },
+        {
+            "cantidad": 1,
+            "precio_unitario": 12,
+            "precio_unitario_base": "12",
+            "detalle": "",
+            "descripcion": "Agua 2L",
+            "key_modelo": "e27404ae-70b1-444f-8f3e-085712693024",
+            "costos": []
+        }
+    ],
+    "tipos_pago": {
+        "4dae99ee-0f86-4368-bc74-9b90ba56ca1b": {
+            "monto_nacional": 72,
+            "monto_extranjera": 36,
+            "tipo_pago": {
+                "descripcion": "Caja",
+                "estado": 1,
+                "fecha_on": "2025-09-18T17:18:05.103109",
+                "icon": "Money",
+                "orden": 2,
+                "key": "caja",
+                "observacion": null
+            }
+        }
+    }
+}

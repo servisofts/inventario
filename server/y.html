@@ -81,7 +81,7 @@
                 codigo_ref: document.getElementById('codigo_ref').value
             };
 
-            fetch('http://localhost:30039/rest/alvaro/registrar_modelo', {
+            fetch('http://localhost:30039/rest/modelo/registrar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)

@@ -1,4 +1,4 @@
-import Controllers.AlvaroController;
+import Controllers.ModeloController;
 import Servisofts.Servisofts;
 import Servisofts.http.Rest;
 
@@ -9,7 +9,7 @@ public class App {
             Servisofts.ManejadorCliente = ManejadorCliente::onMessage;
             Servisofts.Manejador = Manejador::onMessage;
             System.out.println("🔥 REST REGISTRADO 🔥");
-            Rest.addController(AlvaroController.class);
+            Rest.addController(ModeloController.class);
             Servisofts.initialize();
         } catch (Exception e) {
             e.printStackTrace();
