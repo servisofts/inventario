@@ -45,4 +45,20 @@ public class InventarioCardex {
         inventario_cardex.put("tipo", movimiento.name());
         return inventario_cardex;
     }
+
+    public static JSONObject CrearMovimiento(String key_producto, TipoMovimientoCardex movimiento, double cantidad,
+            String key_almacen, String key_usuario, JSONObject data) throws SQLException {
+
+        JSONObject inventario_cardex = new JSONObject();
+        inventario_cardex.put("key", SUtil.uuid());
+        inventario_cardex.put("key_usuario", key_usuario);
+        inventario_cardex.put("fecha_on", SUtil.now());
+        inventario_cardex.put("estado", 1);
+        inventario_cardex.put("key_producto", key_producto);
+        inventario_cardex.put("key_almacen", key_almacen);
+        inventario_cardex.put("cantidad", cantidad);
+        inventario_cardex.put("tipo", movimiento.name());
+        inventario_cardex.put("data", data);
+        return inventario_cardex;
+    }
 }
