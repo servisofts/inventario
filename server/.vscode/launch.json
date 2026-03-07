@@ -6,44 +6,14 @@
     "configurations": [
         {
             "type": "java",
-            "name": "App",
+            "name": "Run Inventory Server",
             "request": "launch",
             "mainClass": "App",
-            "projectName": "server_44176c7e"
-        },
-        {
-            "type": "java",
-            "name": "App",
-            "request": "launch",
-            "mainClass": "App",
-            "projectName": "server_1962603c"
-        },
-        {
-            "type": "java",
-            "name": "App",
-            "request": "launch",
-            "mainClass": "App",
-            "projectName": "server_98d2b10b"
-        },
-        {
-            "type": "java",
-            "name": "App",
-            "request": "launch",
-            "mainClass": "App",
-            "projectName": "server_f498e4c6"
-        },
-        {
-            "type": "java",
-            "name": "Current File",
-            "request": "launch",
-            "mainClass": "${file}"
-        },
-        {
-            "type": "java",
-            "name": "App",
-            "request": "launch",
-            "mainClass": "App",
-            "projectName": "server_ba2267a4"
+            "classPaths": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/lib/*"
+            ],
+            "args": []
         }
     ]
 }
