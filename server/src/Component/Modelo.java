@@ -1083,13 +1083,13 @@ public class Modelo {
 
                     inventario.put(obs1);
 
-                    // JSONObject obs = new JSONObject();
-                    // obs.put("key_cuenta_contable", tipo_producto.getString("key_cuenta_contable"));
-                    // obs.put("tipo", "debe");
-                    // obs.put("glosa", "Anulando inventario de venta modelo: " + modelo.getString("descripcion"));
-                    // obs.put("monto", precio_compra * cantidad);
-                    // obs.put("monto_me", 0);
-                    // inventario.put(obs);
+                    JSONObject obs = new JSONObject();
+                    obs.put("key_cuenta_contable", tipo_producto.getString("key_cuenta_contable"));
+                    obs.put("tipo", "debe");
+                    obs.put("glosa", "Anulando inventario de venta modelo: " + modelo.getString("descripcion"));
+                    obs.put("monto", precio_compra * cantidad);
+                    obs.put("monto_me", 0);
+                    inventario.put(obs);
                 }
 
             }
@@ -1202,7 +1202,7 @@ public class Modelo {
                                 producto.getString("key"),
                                 TipoMovimientoCardex.egreso_venta,
                                 cantidad * -1,
-                                null,
+                                venta.optString("key_almacen"),
                                 venta.getString("key_usuario"), dataExtra);
                         cardex.put("precio_compra", precio_unitario);
                         conectInstance.insertObject("inventario_cardex", cardex);
