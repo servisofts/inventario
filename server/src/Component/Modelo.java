@@ -16,8 +16,6 @@ import Servisofts.SConfig;
 import Servisofts.SPGConect;
 import Servisofts.SPGConectInstance;
 import Servisofts.SUtil;
-import Servisofts.Contabilidad.AsientoContable;
-import Servisofts.Contabilidad.AsientoContableDetalle;
 import Servisofts.Contabilidad.Contabilidad;
 import Util.ConectInstance;
 import Servisofts.Server.SSSAbstract.SSSessionAbstract;
@@ -114,15 +112,9 @@ public class Modelo {
             String key_almacen = obj.getString("key_almacen");
             String key_modelo = obj.getString("key_modelo");
             double cantidad_producir = obj.getDouble("cantidad");
-
-            // JSONObject sucursal = SocketCliente.sendSinc("empresa", new
-            // JSONObject().put("component", "sucursal").put("type", "getByKey").put("key",
-            // key_sucursal));
-            // sucursal = sucursal.getJSONObject("data");
             JSONObject modeloProducto = Modelo.getByKey(key_modelo);
             JSONObject ingredientesReal = Ingrediente.getAll(key_modelo);
             JSONObject almacen = Almacen.getByKey(key_almacen);
-
             if (almacen == null || almacen.isEmpty()) {
                 obj.put("estado", "error");
                 obj.put("error", "No se encontro el almacen");
@@ -148,28 +140,19 @@ public class Modelo {
                         }
                     }
 
-                    System.out.println(ingrediente.optString("descripcion") + ": " + ingrediente.optDouble("cantidad"));
-
                     double cantidad_ingrediente_solicitada = 0;
                     for (int j = 0; j < ingrediente.getJSONArray("modelo_ingrediente").length(); j++) {
                         JSONObject modelo_ingrediente = ingrediente.getJSONArray("modelo_ingrediente").getJSONObject(j);
                         JSONObject modelo = Modelo.getByKey(modelo_ingrediente.getString("key_modelo"));
-
                         double cantidad_ingrediente = modelo_ingrediente.optDouble("cantidad", 0) * cantidad_producir;
-
                         cantidad_ingrediente_solicitada += cantidad_ingrediente;
-                        System.out.println(" - " + modelo.optString("descripcion") + ": "
-                                + modelo_ingrediente.optDouble("cantidad"));
                         double stock = getStock(modelo.getString("key"), key_sucursal);
-                        System.out.println("Stock: " + stock);
-
                         if (stock < cantidad_ingrediente) {
                             failed.put(modelo);
                         } else {
                             modelo.put("cantidad", cantidad_ingrediente);
                             ingredienteOk.put(modelo);
                         }
-
                     }
                     if (ingredientesReal.getJSONObject(key_ingrediente).optBoolean("is_required") == true) {
                         if (cantidad_ingrediente_solicitada < (ingredientesReal.getJSONObject(key_ingrediente)
@@ -179,14 +162,12 @@ public class Modelo {
                             return;
                         }
                     }
-
                     if (cantidad_ingrediente_solicitada > (ingredientesReal.getJSONObject(key_ingrediente)
                             .optDouble("cantidad") * cantidad_producir)) {
                         obj.put("estado", "error");
                         obj.put("error", "Demasiados ingredientes para " + ingrediente.optString("descripcion"));
                         return;
                     }
-
                 }
 
             if (failed.length() > 0) {
@@ -300,8 +281,6 @@ public class Modelo {
                         }
                     }
 
-                    System.out.println(ingrediente.optString("descripcion") + ": " + ingrediente.optDouble("cantidad"));
-
                     double cantidad_ingrediente_solicitada = 0;
                     for (int j = 0; j < ingrediente.getJSONArray("modelo_ingrediente").length(); j++) {
                         JSONObject modelo_ingrediente = ingrediente.getJSONArray("modelo_ingrediente").getJSONObject(j);
@@ -310,10 +289,8 @@ public class Modelo {
                         double cantidad_ingrediente = modelo_ingrediente.optDouble("cantidad", 0) * cantidad_producir;
 
                         cantidad_ingrediente_solicitada += cantidad_ingrediente;
-                        System.out.println(" - " + modelo.optString("descripcion") + ": "
-                                + modelo_ingrediente.optDouble("cantidad"));
+
                         double stock = getStock(modelo.getString("key"), key_sucursal);
-                        System.out.println("Stock: " + stock);
 
                         if (stock < cantidad_ingrediente) {
                             failed.put(modelo);
@@ -419,7 +396,6 @@ public class Modelo {
         for (int i = 0; i < productos.length(); i++) {
             producto = productos.getJSONObject(i);
             if (producto.getString("key_modelo").equals(key_modelo)) {
-                System.out.println("Ingrediente encontrado.---");
                 JSONObject producto_ = new JSONObject(producto.toString());
                 productos.remove(i);
                 return producto_;
@@ -772,12 +748,6 @@ public class Modelo {
 
     public static void registro(JSONObject obj, SSSessionAbstract session) {
         try {
-            System.out.println("**************************************************");
-            System.out.println("************** Registro ************************************");
-            System.out.println("**************************************************");
-            System.out.println("**************************************************");
-            System.out.println("**************************************************");
-            System.out.println("**************************************************");
             JSONObject data = obj.getJSONObject("data");
             data.put("key", SUtil.uuid());
             data.put("estado", 1);
@@ -812,12 +782,6 @@ public class Modelo {
 
     public static void editar(JSONObject obj, SSSessionAbstract session) {
         try {
-            System.out.println("**************************************************");
-            System.out.println("********************* Editar *****************************");
-            System.out.println("**************************************************");
-            System.out.println("**************************************************");
-            System.out.println("**************************************************");
-            System.out.println("**************************************************");
             JSONObject data = obj.getJSONObject("data");
             SPGConect.editObject(COMPONENT, data);
             obj.put("data", data);
@@ -831,12 +795,6 @@ public class Modelo {
 
     public static void editar2(JSONObject obj) {
         try {
-            System.out.println("**************************************************");
-            System.out.println("********************* Editar *****************************");
-            System.out.println("**************************************************");
-            System.out.println("**************************************************");
-            System.out.println("**************************************************");
-            System.out.println("**************************************************");
             JSONObject data = obj.getJSONObject("data");
             SPGConect.editObject(COMPONENT, data);
             obj.put("data", data);
@@ -916,15 +874,12 @@ public class Modelo {
             JSONObject data = obj.getJSONObject("data");
             JSONObject compra_venta = obj.getJSONObject("data").getJSONObject("compra_venta");
             JSONArray detalle = obj.getJSONObject("data").getJSONArray("detalle");
-
-            // JSONObject detalle =
             String key_almacen = data.getString("key_almacen");
             JSONObject almacen = conectInstance.ejecutarConsultaObject("""
                         select to_json(almacen.*) as json
                         from almacen where  almacen.estado > 0 and almacen.key = '%s'
                         limit 1
                     """.formatted(key_almacen));
-
             if (almacen == null || almacen.isEmpty()) {
                 throw new Exception("No se encontro el almacen");
             }
@@ -937,9 +892,7 @@ public class Modelo {
 
             JSONArray productos = new JSONArray();
             for (int i = 0; i < detalle.length(); i++) {
-
                 JSONObject compra_detalle = detalle.getJSONObject(i);
-
                 if (!compra_detalle.has("key_modelo") || !compra_detalle.has("cantidad")
                         || !compra_detalle.has("precio_unitario")) {
                     throw new Exception("El item debe tener key_modelo, cantidad y precio_unitario");
@@ -949,6 +902,7 @@ public class Modelo {
                     throw new Exception("El modelo con key " + compra_detalle.getString("key_modelo")
                             + " no existe o no es valido");
                 }
+                compra_detalle.put("modelo", modelo);
                 double cantidad = compra_detalle.getDouble("cantidad");
                 double precio_unitario = compra_detalle.getDouble("precio_unitario");
                 double precio_unitario_base = compra_detalle.getDouble("precio_unitario_base");
@@ -972,7 +926,7 @@ public class Modelo {
                         modelo.getString("descripcion") + " - " + compra_detalle.optString("detalle", ""));
                 producto.put("key_empresa", compra_venta.getString("key_empresa"));
                 producto.put("key_compra_venta_detalle", compra_detalle.getString("key"));
-
+                producto.put("fecha_vencimiento", compra_detalle.optString("fecha_vencimiento", null));
                 conectInstance.insertObject("producto", producto);
                 producto.put("tipo_producto", tipo_producto);
 
@@ -1075,14 +1029,26 @@ public class Modelo {
                         obs3.put("monto", precio_compra * cantidad * -1);
                         obs3.put("facturar", compraVenta.optBoolean("facturar", false));
                         obs3.put("monto_me", 0);
-
                         inventario.put(obs3);
                     } else {
+                        JSONObject obs1 = new JSONObject();
+                        obs1.put("key_cuenta_contable", tipo_producto.getString("key_cuenta_contable_costo"));
+                        obs1.put("tipo", "haber");
+                        obs1.put("glosa", "Anulando costo de " + tipo + " modelo: " + modelo.getString("descripcion"));
+                        obs1.put("monto", item.optJSONObject("data").optDouble("costo_unitario", 0) * cantidad);
+                        obs1.put("monto_me", 0);
+                        inventario.put(obs1);
+
                         JSONObject obs = new JSONObject();
-                        obs.put("key_cuenta_contable", tipo_producto.getString("key_cuenta_contable"));
+                        obs.put("key_cuenta_contable", tipo_producto.optString("key_cuenta_contable"));
+                        if (!modelo.isNull("key_cuenta_contable_inventario")) {
+                            obs.put("key_cuenta_contable", modelo.getString("key_cuenta_contable_inventario"));
+                        }
+
+                        System.out.println("compra");
+                        System.out.println(obs1);
                         obs.put("tipo", "haber");
-                        obs.put("glosa", "Anulando inventario de venta modelo: " +
-                                modelo.getString("descripcion"));
+                        obs.put("glosa", "Anulando inventario de compra modelo: " + modelo.getString("descripcion"));
                         obs.put("monto", precio_compra * cantidad * -1);
                         obs.put("monto_me", 0);
                         inventario.put(obs);
@@ -1102,50 +1068,45 @@ public class Modelo {
                     if (!tipo_producto.getString("tipo").equals("servicio")) {
                         // Cuando no es servicio vemos los costos del inventario
                         JSONObject obs1 = new JSONObject();
-                        obs1.put("key_cuenta_contable",
-                                tipo_producto.getString("key_cuenta_contable_costo"));
+                        obs1.put("key_cuenta_contable", tipo_producto.getString("key_cuenta_contable_costo"));
                         obs1.put("tipo", "haber");
-                        obs1.put("glosa", "Anulando costo de " + tipo + " modelo: " +
-                                modelo.getString("descripcion"));
-                        obs1.put("monto", item.optJSONObject("data").optDouble("costo_unitario") * cantidad);
+                        obs1.put("glosa", "Anulando costo de " + tipo + " modelo: " + modelo.getString("descripcion"));
+                        obs1.put("monto", item.optJSONObject("data").optDouble("costo_unitario", 0) * cantidad);
                         obs1.put("monto_me", 0);
                         inventario.put(obs1);
-
                         JSONObject obs = new JSONObject();
-                        obs.put("key_cuenta_contable",
-                                tipo_producto.getString("key_cuenta_contable"));
+                        obs.put("key_cuenta_contable", tipo_producto.getString("key_cuenta_contable"));
+                        if (!modelo.isNull("key_cuenta_contable_inventario")) {
+                            obs.put("key_cuenta_contable", modelo.getString("key_cuenta_contable_inventario"));
+                        }
                         obs.put("tipo", "debe");
-                        obs.put("glosa", "Anulando inventario de venta modelo: " +
-                                modelo.getString("descripcion"));
-                        obs.put("monto", item.optJSONObject("data").optDouble("costo_unitario") * cantidad);
+                        obs.put("glosa", "Anulando inventario de venta modelo: " + modelo.getString("descripcion"));
+                        obs.put("monto", item.optJSONObject("data").optDouble("costo_unitario", 0) * cantidad);
                         obs.put("monto_me", 0);
+                        System.out.println("casi");
+                        System.out.println(obs);
                         inventario.put(obs);
                     }
                 }
-                // JSONObject obs3 = new JSONObject();
-                // obs3.put("key_cuenta_contable",
-                // tipo_producto.getString("key_cuenta_contable_ganancia"));
-                // obs3.put("tipo", "debe");
-                // obs3.put("glosa", "Anulando ganancia de venta modelo: " +
-                // modelo.getString("descripcion"));
-                // obs3.put("monto", precio_venta * cantidad);
-                // obs3.put("facturar", compraVenta.optBoolean("facturar", false));
-                // obs3.put("monto_me", 0);
-
-                // inventario.put(obs3);
-
-                // if (!tipo_producto.getString("tipo").equals("servicio")) {
-
-                // } else {
-
-                // }
-
             }
+            JSONArray compraVentaDetalle = obj.getJSONObject("compra_venta").getJSONArray("detalles");
+            for (int i = 0; i < compraVentaDetalle.length(); i++) {
+                JSONObject item = compraVentaDetalle.getJSONObject(i);
+                JSONObject itemData = item.optJSONObject("data");
+                if (itemData == null) {
+                    itemData = new JSONObject(item.optString("data", "{}"));
+                }
+                if (!tipo.equals("compra") && itemData.getString("tipo_producto").equals("servicio")) {
+                    String consulta = "select _anular_suscriptores_key_compra_venta_detalle('" + item.getString("key")
+                            + "') as json";
+                    JSONObject resp = SPGConect.ejecutarConsultaObject(consulta);
+                }
+            }
+            System.out.println(compraVentaDetalle);
 
             obj.put("asiento_inventario", inventario);
             // send.put("key_compra_venta", key_compra_venta);
             // send.put("empresa_tipo_pago", empresaTipoPago );
-
             JSONObject data = SocketCliente.sendSinc("contabilidad", obj);
             if (!data.optString("estado").equals("exito")) {
                 throw new Exception(data.optString("error", "Error al anular la venta en contabilidad"));
