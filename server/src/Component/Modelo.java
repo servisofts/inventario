@@ -9,6 +9,7 @@ import org.json.JSONObject;
 
 import Component.Operations.VentaCaja;
 import Component.Operations.CompraRapida;
+import Component.Operations.ReduccionInventario;
 import Component.Operations.VentaRapida;
 import Component.Operations.TraspasoInventario;
 import Models.TipoMovimientoCardex;
@@ -88,6 +89,9 @@ public class Modelo {
                 break;
             case "traspaso_inventario":
                 traspaso_inventario(obj, session);
+                break;
+            case "reduccion_inventario":
+                reduccion_inventario(obj, session);
                 break;
         }
     }
@@ -1264,6 +1268,9 @@ public class Modelo {
 
     public static void traspaso_inventario(JSONObject obj, SSSessionAbstract session) {
         TraspasoInventario.traspaso_inventario(obj, session);
+    }
+    public static void reduccion_inventario(JSONObject obj, SSSessionAbstract session) {
+        ReduccionInventario.reduccion_inventario(obj, session);
     }
 
 }
