@@ -2,6 +2,7 @@ package Component;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.sql.SQLException;
 
 import org.json.JSONArray;
@@ -908,14 +909,19 @@ public class Modelo {
                 }
                 compra_detalle.put("modelo", modelo);
                 double cantidad = compra_detalle.getDouble("cantidad");
-                double precio_unitario = compra_detalle.getDouble("precio_unitario");
                 double precio_unitario_base = compra_detalle.getDouble("precio_unitario_base");
+                // Costo unitario = lo que se pagó por la línea (cantidad * precio_unitario_base - descuento,
+                // lo mismo que usa compra_venta para el total y contabilidad para el asiento), sin IVA si es
+                // facturada, con 6 decimales. Antes usaba precio_unitario redondeado a 2 decimales y el
+                // inventario quedaba distinto de la cuenta contable de inventario.
+                BigDecimal total_linea = BigDecimal.valueOf(cantidad).multiply(BigDecimal.valueOf(precio_unitario_base))
+                        .subtract(BigDecimal.valueOf(compra_detalle.optDouble("descuento", 0)));
                 if (data.optBoolean("facturar", false)) {
-                    // Hasta q ruddy vea venta
-                    precio_unitario = (precio_unitario / (1 + (porc_iva / 100)));
+                    total_linea = total_linea.divide(BigDecimal.ONE.add(BigDecimal.valueOf(porc_iva).movePointLeft(2)),
+                            10, RoundingMode.HALF_UP);
                 }
-
-                precio_unitario = (Math.round(precio_unitario * 100)) / 100.00;
+                double precio_unitario = cantidad == 0 ? 0
+                        : total_linea.divide(BigDecimal.valueOf(cantidad), 6, RoundingMode.HALF_UP).doubleValue();
                 JSONObject tipo_producto = TipoProducto.getByKey(modelo.getString("key_tipo_producto"));
                 compra_detalle.put("tipo_producto", tipo_producto);
 
