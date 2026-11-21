@@ -1,2 +1,2 @@
 
-scp -r ../server.jar servisofts@192.168.0.10:/home/servisofts/servicios/inventario/entornos/inventario/servicios/inventario
+scp -r ../server.jar servisofts@192.168.2.2:/home/servisofts/servicios/inventario/entornos/inventario/servicios/inventario
