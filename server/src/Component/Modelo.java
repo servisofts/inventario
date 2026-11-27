@@ -871,6 +871,28 @@ public class Modelo {
 
     }
 
+    /**
+     * Neto (sin impuestos incluidos) de cada línea de una compra según el catálogo de impuestos de contabilidad
+     * (impuesto/calcular, developers/modulos/impuestos-plan.md). null si la empresa no tiene catálogo.
+     * El total de la línea se arma igual que en el asiento de compra: cantidad × precio_unitario_base − descuento.
+     */
+    static JSONArray netosCompra(String key_empresa, JSONArray detalle, boolean facturar) throws Exception {
+        JSONArray lineas = new JSONArray();
+        for (int i = 0; i < detalle.length(); i++) {
+            JSONObject d = detalle.getJSONObject(i);
+            double total = d.getDouble("cantidad") * d.getDouble("precio_unitario_base") - d.optDouble("descuento", 0);
+            lineas.put(new JSONObject().put("key", String.valueOf(i)).put("total", Math.round(total * 100.0) / 100.0));
+        }
+        JSONObject resp = SocketCliente.sendSinc("contabilidad", new JSONObject()
+                .put("component", "impuesto").put("type", "calcular").put("key_empresa", key_empresa)
+                .put("data", new JSONObject().put("aplica", "compra").put("facturar", facturar).put("detalle", lineas)));
+        if (resp == null || !"exito".equals(resp.optString("estado")))
+            throw new Exception(resp == null ? "Contabilidad no respondió al calcular los impuestos de la compra."
+                    : resp.optString("error", "Error al calcular los impuestos de la compra."));
+        JSONObject calc = resp.getJSONObject("data");
+        return calc.optBoolean("activo", false) ? calc.getJSONArray("detalle") : null;
+    }
+
     public static void compraCaja(JSONObject obj, SSSessionAbstract session) {
         ConectInstance conectInstance = null;
         try {
@@ -894,6 +916,9 @@ public class Modelo {
                 porc_iva = Contabilidad.getEnviroment(compra_venta.getString("key_empresa"), "IVA")
                         .optDouble("observacion", 0);
             }
+            // Empresas con catálogo de impuestos: el costo es el neto de cada línea que calcula contabilidad (el mismo
+            // del asiento de compra). Sin catálogo (null), el IVA de enviroment como antes.
+            JSONArray netos = netosCompra(compra_venta.getString("key_empresa"), detalle, data.optBoolean("facturar", false));
 
             JSONArray productos = new JSONArray();
             for (int i = 0; i < detalle.length(); i++) {
@@ -916,7 +941,9 @@ public class Modelo {
                 // inventario quedaba distinto de la cuenta contable de inventario.
                 BigDecimal total_linea = BigDecimal.valueOf(cantidad).multiply(BigDecimal.valueOf(precio_unitario_base))
                         .subtract(BigDecimal.valueOf(compra_detalle.optDouble("descuento", 0)));
-                if (data.optBoolean("facturar", false)) {
+                if (netos != null) {
+                    total_linea = new BigDecimal(netos.getJSONObject(i).get("neto").toString());
+                } else if (data.optBoolean("facturar", false)) {
                     total_linea = total_linea.divide(BigDecimal.ONE.add(BigDecimal.valueOf(porc_iva).movePointLeft(2)),
                             10, RoundingMode.HALF_UP);
                 }
