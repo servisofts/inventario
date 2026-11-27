@@ -881,7 +881,17 @@ public class Modelo {
         for (int i = 0; i < detalle.length(); i++) {
             JSONObject d = detalle.getJSONObject(i);
             double total = d.getDouble("cantidad") * d.getDouble("precio_unitario_base") - d.optDouble("descuento", 0);
-            lineas.put(new JSONObject().put("key", String.valueOf(i)).put("total", Math.round(total * 100.0) / 100.0));
+            JSONObject linea = new JSONObject().put("key", String.valueOf(i)).put("total", Math.round(total * 100.0) / 100.0);
+            // Impuesto de compra del modelo, si no el del tipo de producto (fase 2); vacío = el por defecto.
+            JSONObject modelo = d.has("key_modelo") ? Modelo.getByKey(d.getString("key_modelo")) : null;
+            String key_impuesto = modelo == null || modelo.isNull("key_impuesto_compra") ? "" : modelo.optString("key_impuesto_compra", "");
+            if (key_impuesto.isEmpty() && modelo != null) {
+                JSONObject tipo = TipoProducto.getByKey(modelo.getString("key_tipo_producto"));
+                key_impuesto = tipo == null || tipo.isNull("key_impuesto_compra") ? "" : tipo.optString("key_impuesto_compra", "");
+            }
+            if (!key_impuesto.isEmpty())
+                linea.put("key_impuesto", key_impuesto);
+            lineas.put(linea);
         }
         JSONObject resp = SocketCliente.sendSinc("contabilidad", new JSONObject()
                 .put("component", "impuesto").put("type", "calcular").put("key_empresa", key_empresa)
